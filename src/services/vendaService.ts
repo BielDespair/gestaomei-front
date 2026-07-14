@@ -20,14 +20,25 @@ export interface Venda {
   deliveryStatus: 'ENTREGUE' | 'PENDENTE';
 }
 
-export const vendaService = {
-  getVendas: (): Promise<Venda[]> => apiFetch('/vendas'),
+export interface VendasFiltro {
+  start?: string;
+  end?: string;
+  clientId?: number;
+}
 
-  // Baixa de estoque + lançamento de fiado (se houver) acontecem numa única
-  // transação no backend — se algo falhar no meio, nada fica gravado pela metade.
+export const vendaService = {
+  getVendas: (filtro?: VendasFiltro): Promise<Venda[]> => {
+    const params = new URLSearchParams();
+    if (filtro?.start) params.set('start', filtro.start);
+    if (filtro?.end) params.set('end', filtro.end);
+    if (filtro?.clientId) params.set('client_id', filtro.clientId.toString());
+    const query = params.toString();
+    return apiFetch(`/vendas${query ? `?${query}` : ''}`);
+  },
+
   registrarVenda: (payload: Omit<Venda, 'id'>): Promise<Venda> =>
-    apiFetch('/vendas', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    }),
+    apiFetch('/vendas', { method: 'POST', body: JSON.stringify(payload) }),
+
+  marcarComoEntregue: (id: number): Promise<Venda> =>
+    apiFetch(`/vendas/${id}/entregar`, { method: 'PATCH' }),
 };

@@ -2,11 +2,11 @@
 // fetch/mock diretamente, então autenticação e tratamento de erro ficam
 // num único lugar.
 
-// Ajuste esta URL para onde a API Python estiver rodando.
-// - Vite:   troque por `import.meta.env.VITE_API_URL`
-// - Create React App: troque por `process.env.REACT_APP_API_URL`
-const API_URL = import.meta.env.VITE_API_URL
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
+// Exportado pra quem precisa montar uma URL absoluta a partir de um caminho
+// relativo devolvido pela API (ex: a foto de um produto).
+export const API_BASE_URL = API_URL;
 
 const TOKEN_KEY = '@AppSogro:token';
 
@@ -52,8 +52,13 @@ function extractMessage(body: FastApiErrorBody | null, fallback: string): string
 export async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = getToken();
 
+  // Upload de arquivo (FormData) não pode ter Content-Type: application/json —
+  // o navegador precisa definir o próprio Content-Type (multipart/form-data
+  // com o "boundary" correto), então nesse caso a gente não força nada.
+  const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
+
   const headers: HeadersInit = {
-    'Content-Type': 'application/json',
+    ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
     ...(options.headers || {}),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };

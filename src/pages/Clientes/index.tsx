@@ -1,8 +1,7 @@
-import './styles.css';
 import React, { useEffect, useState } from 'react';
 import { clientService, type Client } from '../../services/clientService';
 import { cepService } from '../../services/cepService';
-
+import '../../styles/shared-tables.css';
 
 const initialFormState = {
   name: '', document: '', phone: '', email: '', pix: '',
@@ -15,6 +14,8 @@ export function Clientes() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isFetchingCep, setIsFetchingCep] = useState(false);
+  const [isQuitando, setIsQuitando] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -27,9 +28,13 @@ export function Clientes() {
 
   async function loadClients() {
     setIsLoading(true);
-    try { setClients(await clientService.getClients()); }
-    catch (error) { console.error(error); }
-    finally { setIsLoading(false); }
+    try {
+      setClients(await clientService.getClients());
+    } catch (error) {
+      setErrorMessage('Não foi possível carregar os clientes.');
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -58,6 +63,7 @@ export function Clientes() {
   const handleNewClick = () => {
     setEditingId(null);
     setFormData(initialFormState);
+    setErrorMessage('');
     setIsModalOpen(true);
   };
 
@@ -69,11 +75,13 @@ export function Clientes() {
       address: client.address, number: client.number, neighborhood: client.neighborhood,
       city: client.city, state: client.state, notes: client.notes
     });
+    setErrorMessage('');
     setIsModalOpen(true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMessage('');
     setIsSaving(true);
     try {
       if (editingId) {
@@ -84,12 +92,35 @@ export function Clientes() {
         setClients(prev => [...prev, novo]);
       }
       setIsModalOpen(false);
-    } finally { setIsSaving(false); }
+    } catch (error: any) {
+      setErrorMessage(error?.message || 'Falha ao salvar o cliente.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleViewDebt = (client: Client) => {
     setSelectedClient(client);
     setIsDebtModalOpen(true);
+  };
+
+  const handleQuitarDivida = async () => {
+    if (!selectedClient) return;
+    const confirmado = window.confirm(
+      `Marcar toda a dívida de ${selectedClient.name} (${formatMoney(selectedClient.totalDebt)}) como paga?`
+    );
+    if (!confirmado) return;
+
+    setIsQuitando(true);
+    try {
+      const atualizado = await clientService.quitarDivida(selectedClient.id);
+      setClients(prev => prev.map(c => (c.id === atualizado.id ? atualizado : c)));
+      setIsDebtModalOpen(false);
+    } catch (error: any) {
+      setErrorMessage(error?.message || 'Não foi possível quitar a dívida.');
+    } finally {
+      setIsQuitando(false);
+    }
   };
 
   const formatMoney = (value: number) => value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -100,6 +131,13 @@ export function Clientes() {
         <h2 className="page-title">Cadastro de Clientes</h2>
         <button className="btn btn-primary" onClick={handleNewClick}>+ Novo Cliente</button>
       </div>
+
+      {errorMessage && (
+        <div className="alert alert-danger d-flex justify-content-between align-items-center">
+          <span>{errorMessage}</span>
+          <button type="button" className="btn-close" onClick={() => setErrorMessage('')}></button>
+        </div>
+      )}
 
       {isLoading ? <p>Carregando clientes...</p> : (
         <div className="table-responsive">
@@ -125,7 +163,6 @@ export function Clientes() {
                   <td>{client.document || '-'}</td>
                   <td>{client.neighborhood || '-'}</td>
 
-
                   <td style={{ maxWidth: '250px' }}>
                     <small style={{ color: '#495057', fontStyle: 'italic' }}>
                       {client.notes || '-'}
@@ -138,11 +175,11 @@ export function Clientes() {
                         Devendo: {formatMoney(client.totalDebt)}
                       </span>
                     ) : (
-                      <span className="badge badge-success">Em Dia</span>
+                      <span className="badge bg-success">Em Dia</span>
                     )}
                   </td>
                   <td>
-                    <div className="d-flex gap-2">
+                    <div className="action-buttons">
                       {client.totalDebt > 0 && (
                         <button
                           className="btn btn-sm btn-outline-danger"
@@ -152,7 +189,7 @@ export function Clientes() {
                         </button>
                       )}
                       <button
-                        className="btn btn-sm btn-outline-primary "
+                        className="btn btn-sm btn-outline-primary"
                         onClick={() => handleEditClick(client)}
                       >
                         Editar
@@ -161,6 +198,12 @@ export function Clientes() {
                   </td>
                 </tr>
               ))}
+
+              {clients.length === 0 && (
+                <tr>
+                  <td colSpan={6} style={{ textAlign: 'center', padding: '2rem' }}>Nenhum cliente cadastrado.</td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -264,7 +307,9 @@ export function Clientes() {
 
                   <div className="modal-footer" style={{ borderTop: '1px solid #dee2e6', backgroundColor: '#f8f9fa' }}>
                     <button type="button" className="btn btn-secondary" onClick={() => setIsModalOpen(false)}>Cancelar</button>
-                    <button type="submit" className="btn btn-primary" disabled={isSaving}>Salvar Cliente</button>
+                    <button type="submit" className="btn btn-primary" disabled={isSaving}>
+                      {isSaving ? 'Salvando...' : 'Salvar Cliente'}
+                    </button>
                   </div>
                 </form>
               </div>
@@ -319,6 +364,14 @@ export function Clientes() {
                 </div>
                 <div className="modal-footer">
                   <button type="button" className="btn btn-secondary" onClick={() => setIsDebtModalOpen(false)}>Fechar</button>
+                  <button
+                    type="button"
+                    className="btn btn-success"
+                    disabled={isQuitando}
+                    onClick={handleQuitarDivida}
+                  >
+                    {isQuitando ? 'Salvando...' : '✅ Quitar Dívida (Recebido)'}
+                  </button>
                 </div>
               </div>
             </div>

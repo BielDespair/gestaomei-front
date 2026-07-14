@@ -1,101 +1,66 @@
+import { useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import './styles.css';
 
+const NAV_ITEMS = [
+  { to: '/', label: 'Dashboard', end: true },
+  { to: '/vendas', label: 'Vendas', end: false },
+  { to: '/clientes', label: 'Clientes', end: false },
+  { to: '/entradas', label: 'Entradas', end: false },
+  { to: '/produtos', label: 'Produtos', end: false },
+];
+
 export function Layout() {
   const { signOut, user } = useAuth();
+  const [isNavOpen, setIsNavOpen] = useState(false);
 
   return (
     <>
-      <header className="topbar shadow-sm">
+      <nav className="navbar navbar-expand-lg navbar-light bg-white shadow-sm sticky-top">
         <div className="container">
-          <div className="topbar-header">
-            <h1 className="brand">Controle de Estoque</h1>
+          <span className="navbar-brand fw-bold mb-0">Controle de Estoque</span>
 
-            <div className="user-area">
-              <span className="text-muted">
+          <button
+            className="navbar-toggler"
+            type="button"
+            onClick={() => setIsNavOpen(prev => !prev)}
+            aria-controls="mainNav"
+            aria-expanded={isNavOpen}
+            aria-label="Abrir menu"
+          >
+            <span className="navbar-toggler-icon"></span>
+          </button>
+
+          <div className={`collapse navbar-collapse ${isNavOpen ? 'show' : ''}`} id="mainNav">
+            <ul className="navbar-nav me-auto mb-2 mb-lg-0 gap-lg-1 mt-3 mt-lg-0">
+              {NAV_ITEMS.map(item => (
+                <li className="nav-item" key={item.to}>
+                  <NavLink
+                    to={item.to}
+                    end={item.end}
+                    onClick={() => setIsNavOpen(false)}
+                    className={({ isActive }) =>
+                      `nav-link px-3 rounded-pill ${isActive ? 'active fw-semibold' : ''}`
+                    }
+                  >
+                    {item.label}
+                  </NavLink>
+                </li>
+              ))}
+            </ul>
+
+            <div className="d-flex align-items-center gap-3 border-top border-lg-0 pt-3 pt-lg-0 mt-2 mt-lg-0">
+              <span className="text-muted text-nowrap">
                 Olá, <strong>{user?.name}</strong>
               </span>
-
-              <button
-                className="btn btn-outline-danger btn-sm"
-                onClick={signOut}
-              >
+              <button className="btn btn-outline-danger btn-sm" onClick={signOut}>
                 Sair
               </button>
             </div>
           </div>
-
-          <ul className="nav nav-pills navigation">
-            <li className="nav-item">
-              <NavLink
-                to="/"
-                end
-                className={({ isActive }) =>
-                  `nav-link ${isActive ? 'active' : ''}`
-                }
-              >
-                Dashboard
-              </NavLink>
-            </li>
-
-            <li className="nav-item">
-              <NavLink
-                to="/vendas"
-                className={({ isActive }) =>
-                  `nav-link ${isActive ? 'active' : ''}`
-                }
-              >
-                Vendas
-              </NavLink>
-            </li>
-
-            <li className="nav-item">
-              <NavLink
-                to="/clientes"
-                className={({ isActive }) =>
-                  `nav-link ${isActive ? 'active' : ''}`
-                }
-              >
-                Clientes
-              </NavLink>
-            </li>
-
-            <li className="nav-item">
-              <NavLink
-                to="/estoque"
-                className={({ isActive }) =>
-                  `nav-link ${isActive ? 'active' : ''}`
-                }
-              >
-                Estoque
-              </NavLink>
-            </li>
-
-            <li className="nav-item">
-              <NavLink
-                to="/entradas"
-                className={({ isActive }) =>
-                  `nav-link ${isActive ? 'active' : ''}`
-                }
-              >
-                Entradas
-              </NavLink>
-            </li>
-
-            <li className="nav-item">
-              <NavLink
-                to="/produtos"
-                className={({ isActive }) =>
-                  `nav-link ${isActive ? 'active' : ''}`
-                }
-              >
-                Produtos
-              </NavLink>
-            </li>
-          </ul>
         </div>
-      </header>
+      </nav>
 
       <main className="container py-4">
         <Outlet />

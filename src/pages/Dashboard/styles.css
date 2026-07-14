@@ -1,0 +1,38 @@
+/* Fonte um pouco maior em toda a tela — facilita leitura pra público idoso */
+.dashboard-tela {
+  font-size: 1.05rem;
+}
+
+/* Abas grandes, fáceis de tocar */
+.abas-dashboard .btn {
+  min-height: 56px;
+}
+
+.kpi-card .card-body {
+  padding: 1.25rem;
+}
+
+.profit-chart-svg {
+  width: 100%;
+  height: auto;
+  max-height: 260px;
+}
+
+.melhor-cliente-card {
+  background: linear-gradient(135deg, #fff8e1 0%, #ffffff 100%);
+  border: 2px solid #ffc107;
+}
+
+.ranking-badge {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.border-danger-subtle {
+  border-color: #f5c2c7 !important;
+}

@@ -1,0 +1,90 @@
+/* --- ESTILOS COMPLEMENTARES (apenas o que o Bootstrap real não cobre) --- */
+/* Ajustados para uso em tablet, em pé, ao ar livre */
+
+/* Fonte base um pouco maior em toda a tela — facilita leitura com sol/distância */
+.vendas-tablet {
+  font-size: 1.05rem;
+}
+
+.venda-passo {
+  margin-bottom: 1.25rem;
+}
+
+/* Bootstrap não tem uma classe pronta para borda tracejada */
+.border-dashed {
+  border-style: dashed !important;
+}
+
+/* Coluna lateral (carrinho + finalização) grudada ao rolar a lista de produtos */
+.vendas-sidebar {
+  top: 1rem;
+}
+
+@media (min-width: 992px) {
+  .vendas-sidebar {
+    max-height: calc(100vh - 2rem);
+    display: flex;
+    flex-direction: column;
+  }
+}
+
+/* Lista de itens do carrinho rola dentro do card; total e botão de finalizar
+   ficam sempre visíveis, sem precisar rolar a etapa toda */
+.cart-scroll {
+  max-height: 32vh;
+  overflow-y: auto;
+}
+
+/* Em telas de toque não existe :hover — o feedback vem do :active (aperta e "afunda") */
+.produto-card {
+  cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.1s;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+.produto-card:active {
+  transform: scale(0.97);
+  box-shadow: var(--bs-box-shadow-sm);
+  background-color: var(--bs-tertiary-bg);
+}
+
+.opacity-65 {
+  opacity: 0.65;
+}
+
+/* Todos os botões reagem ao toque com um leve "afundamento", já que hover não existe no tablet */
+.btn {
+  touch-action: manipulation;
+}
+
+.btn:active {
+  transform: scale(0.97);
+}
+
+/* Checkbox maior que o padrão do Bootstrap, usado nos toggles de pagamento/entrega */
+.toggle-check {
+  width: 1.6rem;
+  height: 1.6rem;
+}
+
+/* Input gigante de preço no modal — maior que qualquer fs-* do Bootstrap */
+.input-giant {
+  font-size: 2.75rem !important;
+  padding: 1.25rem !important;
+  height: auto !important;
+}
+
+/* Botões circulares de + / - de quantidade */
+.btn-qty {
+  width: 70px;
+  height: 70px;
+  font-size: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  line-height: 1;
+  flex-shrink: 0;
+}

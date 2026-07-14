@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { vendaService, type Venda } from '../../services/vendaService';
 
 type PeriodoPreset = 'hoje' | '7d' | '30d' | 'tudo';

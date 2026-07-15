@@ -6,6 +6,7 @@ export interface DashboardSummary {
   revenue: number;
   cost: number;
   profit: number;
+  pendingCostRevenue: number;
   salesCount: number;
   unitsSold: number;
   averageTicket: number;
@@ -74,6 +75,29 @@ export interface TopProduto {
   lucro: number;
 }
 
+export interface EstoqueValor {
+  unidadesEmEstoque: number;
+  valorInvestido: number;
+}
+
+export interface AguardandoReposicao {
+  productId: number;
+  productName: string;
+  quantidadePendente: number;
+  clientes: string[];
+}
+
+export interface FormaPagamento {
+  metodo: string;
+  total: number;
+  quantidade: number;
+}
+
+export interface EstoquePorProduto {
+  productName: string;
+  valor: number;
+}
+
 export type SummaryPreset =
   | 'today' | '7d' | '30d' | 'this_week' | 'last_week' | 'this_month' | 'last_month';
 export type SeriesPreset = '7d' | '30d' | '12m';
@@ -106,4 +130,16 @@ export const dashboardService = {
 
   getTopProdutos: (limit = 10): Promise<TopProduto[]> =>
     apiFetch(`/dashboard/top-produtos?limit=${limit}`),
+
+  getEstoqueValor: (): Promise<EstoqueValor> =>
+    apiFetch('/dashboard/estoque-valor'),
+
+  getAguardandoReposicao: (): Promise<AguardandoReposicao[]> =>
+    apiFetch('/dashboard/aguardando-reposicao'),
+
+  getFormasPagamento: (preset: SummaryPreset): Promise<FormaPagamento[]> =>
+    apiFetch(`/dashboard/formas-pagamento?preset=${preset}`),
+
+  getEstoquePorProduto: (): Promise<EstoquePorProduto[]> =>
+    apiFetch('/dashboard/estoque-por-produto'),
 };

@@ -344,12 +344,23 @@ export function Produtos() {
                       </div>
                       <div className="mb-3" style={{ width: '120px' }}>
                         <label className="form-label">Estoque {editingProduct ? '' : 'Inicial'}</label>
-                        <input type="number" className="form-control" name="stock" value={formData.stock} onChange={handleInputChange} required />
+                        <input
+                          type="number"
+                          className="form-control"
+                          name="stock"
+                          value={formData.stock}
+                          onChange={handleInputChange}
+                          disabled={!!editingProduct}
+                          required
+                        />
                       </div>
                     </div>
                     {editingProduct && (
                       <small className="text-muted d-block">
-                        Alterar o estoque aqui não gera lote de custo (PEPS). Para registrar uma compra nova, use a tela de Entradas.
+                        O estoque não pode ser alterado por aqui — isso evita ele ficar
+                        dessincronizado do custo real (PEPS). Para aumentar, use{' '}
+                        <strong>Registrar Entrada</strong>. Para corrigir uma perda/quebra,
+                        avise quem cuida do sistema.
                       </small>
                     )}
                   </div>

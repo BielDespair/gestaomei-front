@@ -54,7 +54,6 @@ export function Entradas() {
   };
 
   const handleEditClick = (entrada: Entrada) => {
-    if (!entrada.podeEditar) return;
     setEditingEntrada(entrada);
     setFormData({
       date: entrada.date,
@@ -67,7 +66,7 @@ export function Entradas() {
   };
 
   const handleDeleteClick = async (entrada: Entrada) => {
-    if (!entrada.podeEditar) return;
+    if (!entrada.podeExcluir) return;
     const confirmado = window.confirm(
       `Apagar a entrada de ${entrada.quantity}un de "${entrada.productName}"? Essa ação não pode ser desfeita.`
     );
@@ -155,24 +154,29 @@ export function Entradas() {
                 <tr key={entrada.id}>
                   <td><strong>{formatDate(entrada.date)}</strong></td>
                   <td>{entrada.productName}</td>
-                  <td>{entrada.quantity} un</td>
+                  <td>
+                    {entrada.quantity} un
+                    {entrada.quantidadeMinima > 0 && (
+                      <div className="text-muted small">{entrada.quantidadeMinima} já usadas</div>
+                    )}
+                  </td>
                   <td style={{ color: '#6c757d' }}>{formatMoney(entrada.unitCost)}</td>
                   <td style={{ color: '#dc3545', fontWeight: '500' }}>{formatMoney(entrada.totalCost)}</td>
                   <td>
-                    {entrada.podeEditar ? (
-                      <div className="action-buttons">
-                        <button className="btn btn-sm btn-warning" onClick={() => handleEditClick(entrada)}>Editar</button>
+                    <div className="action-buttons">
+                      <button className="btn btn-sm btn-warning" onClick={() => handleEditClick(entrada)}>Editar</button>
+                      {entrada.podeExcluir ? (
                         <button className="btn btn-sm btn-danger" onClick={() => handleDeleteClick(entrada)}>Excluir</button>
-                      </div>
-                    ) : (
-                      <span
-                        className="badge"
-                        style={{ backgroundColor: '#adb5bd', color: '#fff', cursor: 'help' }}
-                        title="Já tem produto vendido desse lote — não dá mais pra editar ou apagar. Registre uma nova entrada para corrigir."
-                      >
-                        🔒 Já vendido
-                      </span>
-                    )}
+                      ) : (
+                        <span
+                          className="badge"
+                          style={{ backgroundColor: '#adb5bd', color: '#fff', cursor: 'help' }}
+                          title="Já tem produto vendido ou usado numa venda sob encomenda desse lote — não dá pra apagar, mas você ainda pode editar a quantidade (até o mínimo já usado) e o custo."
+                        >
+                          🔒 Não pode excluir
+                        </span>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -221,7 +225,7 @@ export function Entradas() {
                       )}
                       {editingEntrada && (
                         <small className="text-muted d-block mt-1">
-                          Não dá pra trocar o produto de uma entrada já registrada. Selecionou o produto errado? Apague esta entrada e registre uma nova.
+                          Não dá pra trocar o produto de uma entrada já registrada. Selecionou o produto errado? Registre uma entrada nova com o produto certo.
                         </small>
                       )}
                     </div>
@@ -229,7 +233,20 @@ export function Entradas() {
                     <div style={{ display: 'flex', gap: '1rem' }}>
                       <div className="mb-3" style={{ flex: 1 }}>
                         <label className="form-label">Quantidade Comprada</label>
-                        <input type="number" min="1" className="form-control" name="quantity" value={formData.quantity} onChange={handleInputChange} required />
+                        <input
+                          type="number"
+                          min={editingEntrada ? editingEntrada.quantidadeMinima || 1 : 1}
+                          className="form-control"
+                          name="quantity"
+                          value={formData.quantity}
+                          onChange={handleInputChange}
+                          required
+                        />
+                        {editingEntrada && editingEntrada.quantidadeMinima > 0 && (
+                          <small className="text-muted d-block mt-1">
+                            Mínimo {editingEntrada.quantidadeMinima} — já foi vendido/usado dessa quantidade.
+                          </small>
+                        )}
                       </div>
                       <div className="mb-3" style={{ flex: 1 }}>
                         <label className="form-label">Custo Unitário (R$)</label>

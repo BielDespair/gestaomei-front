@@ -8,7 +8,8 @@ export interface Entrada {
   quantity: number;
   totalCost: number;
   unitCost: number;
-  podeEditar: boolean;
+  quantidadeMinima: number; // menor quantidade permitida ao editar (já consumida desse lote)
+  podeExcluir: boolean;     // só true se nada desse lote foi vendido/alocado ainda
 }
 
 export const entradaService = {

@@ -5,29 +5,24 @@ import {
   type DashboardSummary,
   type LowStockProduct,
   type Devedor,
-  type ProfitPoint,
   type EntregaPendente,
   type TopCliente,
   type TopProduto,
+  type EstoqueValor,
+  type AguardandoReposicao,
   type SummaryPreset,
-  type SeriesPreset,
 } from '../../services/dashboardService';
 import { vendaService } from '../../services/vendaService';
+import { Graficos } from './Graficos';
 import './styles.css';
 
-type Aba = 'pendencias' | 'negocio';
+type Aba = 'pendencias' | 'negocio' | 'graficos';
 
 const SUMMARY_PRESETS: { value: SummaryPreset; label: string }[] = [
   { value: 'today', label: 'Hoje' },
   { value: 'this_week', label: 'Esta Semana' },
   { value: 'this_month', label: 'Este Mês' },
   { value: 'last_month', label: 'Mês Passado' },
-];
-
-const SERIES_PRESETS: { value: SeriesPreset; label: string }[] = [
-  { value: '7d', label: '7 dias' },
-  { value: '30d', label: '30 dias' },
-  { value: '12m', label: '12 meses' },
 ];
 
 const formatMoney = (value: number) =>
@@ -46,62 +41,13 @@ function TelefoneLink({ phone }: { phone: string }) {
   if (!phone) return <span className="text-muted">Sem telefone</span>;
   return (
     <a href={`tel:${onlyDigits(phone)}`} className="link-primary text-decoration-none">
-      📞 {phone}
+      {phone}
     </a>
   );
 }
 
-function ProfitChart({ data }: { data: ProfitPoint[] }) {
-  if (data.length === 0) {
-    return <div className="text-center text-muted py-5">Sem vendas nesse período.</div>;
-  }
-
-  const width = 700;
-  const height = 220;
-  const paddingLeft = 8;
-  const paddingBottom = 26;
-  const chartWidth = width - paddingLeft - 8;
-  const chartHeight = height - paddingBottom - 14;
-  const zeroY = 10 + chartHeight / 2;
-
-  const maxAbs = Math.max(1, ...data.map(d => Math.abs(d.profit)));
-  const barWidth = chartWidth / data.length;
-
-  const labelIndexes = Array.from(
-    new Set([0, Math.floor((data.length - 1) / 2), data.length - 1])
-  );
-
-  const formatLabel = (label: string) => {
-    if (label.length === 7) {
-      const [y, m] = label.split('-');
-      return `${m}/${y.slice(2)}`;
-    }
-    const parts = label.split('-');
-    return `${parts[2]}/${parts[1]}`;
-  };
-
-  return (
-    <svg viewBox={`0 0 ${width} ${height}`} className="profit-chart-svg" role="img">
-      <line x1={paddingLeft} y1={zeroY} x2={width - 4} y2={zeroY} stroke="var(--bs-border-color)" strokeWidth={1} />
-      {data.map((d, i) => {
-        const barHeight = Math.max((Math.abs(d.profit) / maxAbs) * (chartHeight / 2 - 6), d.profit === 0 ? 0 : 2);
-        const x = paddingLeft + i * barWidth + barWidth * 0.18;
-        const w = Math.max(barWidth * 0.64, 1);
-        const y = d.profit >= 0 ? zeroY - barHeight : zeroY;
-        const color = d.profit >= 0 ? '#198754' : '#dc3545';
-        return (
-          <rect key={d.label} x={x} y={y} width={w} height={barHeight} fill={color} rx={2}>
-            <title>{`${formatLabel(d.label)}: ${formatMoney(d.profit)}`}</title>
-          </rect>
-        );
-      })}
-      {labelIndexes.map(i => (
-        <text key={i} x={paddingLeft + i * barWidth + barWidth / 2} y={height - 6} fontSize={11} textAnchor="middle" fill="var(--bs-secondary-color)">
-          {formatLabel(data[i].label)}
-        </text>
-      ))}
-    </svg>
-  );
+function SecaoTitulo({ children }: { children: React.ReactNode }) {
+  return <h5 className="fw-bold mt-4 mb-3 pb-2 border-bottom">{children}</h5>;
 }
 
 export function Dashboard() {
@@ -112,30 +58,34 @@ export function Dashboard() {
   const [devedores, setDevedores] = useState<Devedor[]>([]);
   const [entregasPendentes, setEntregasPendentes] = useState<EntregaPendente[]>([]);
   const [lowStockPreview, setLowStockPreview] = useState<LowStockProduct[]>([]);
+  const [aguardandoReposicao, setAguardandoReposicao] = useState<AguardandoReposicao[]>([]);
   const [isLoadingPendencias, setIsLoadingPendencias] = useState(true);
   const [entregandoIds, setEntregandoIds] = useState<Set<number>>(new Set());
   const [devedorAberto, setDevedorAberto] = useState<number | null>(null);
 
   // --- Meu Negócio ---
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
-  const [profitSeries, setProfitSeries] = useState<ProfitPoint[]>([]);
   const [topClientes, setTopClientes] = useState<TopCliente[]>([]);
   const [topProdutos, setTopProdutos] = useState<TopProduto[]>([]);
-  const [summaryPreset, setSummaryPreset] = useState<SummaryPreset>('this_month');
-  const [seriesPreset, setSeriesPreset] = useState<SeriesPreset>('30d');
-  const [isLoadingNegocio, setIsLoadingNegocio] = useState(true);
+  const [estoqueValor, setEstoqueValor] = useState<EstoqueValor | null>(null);
+  const [summaryPreset, setSummaryPreset] = useState<SummaryPreset>('this_week');
+  const [isLoadingEstoqueAgora, setIsLoadingEstoqueAgora] = useState(true);
+  const [isLoadingResultado, setIsLoadingResultado] = useState(true);
+  const [isLoadingRankings, setIsLoadingRankings] = useState(true);
 
   const loadPendencias = useCallback(async () => {
     setIsLoadingPendencias(true);
     try {
-      const [devedoresData, entregasData, lowStockData] = await Promise.all([
+      const [devedoresData, entregasData, lowStockData, aguardandoData] = await Promise.all([
         dashboardService.getDevedores(),
         dashboardService.getEntregasPendentes(),
         dashboardService.getLowStock(10),
+        dashboardService.getAguardandoReposicao(),
       ]);
       setDevedores(devedoresData);
       setEntregasPendentes(entregasData);
       setLowStockPreview(lowStockData.slice(0, 5));
+      setAguardandoReposicao(aguardandoData);
     } catch {
       setErrorMessage('Não foi possível carregar as pendências.');
     } finally {
@@ -143,28 +93,54 @@ export function Dashboard() {
     }
   }, []);
 
-  const loadNegocio = useCallback(async (sPreset: SummaryPreset, gPreset: SeriesPreset) => {
-    setIsLoadingNegocio(true);
+  const loadEstoqueAgora = useCallback(async () => {
+    setIsLoadingEstoqueAgora(true);
     try {
-      const [summaryData, seriesData, clientesData, produtosData] = await Promise.all([
-        dashboardService.getSummary(sPreset),
-        dashboardService.getProfitSeries(gPreset),
+      setEstoqueValor(await dashboardService.getEstoqueValor());
+    } catch {
+      setErrorMessage('Não foi possível carregar o valor em estoque.');
+    } finally {
+      setIsLoadingEstoqueAgora(false);
+    }
+  }, []);
+
+  const loadRankings = useCallback(async () => {
+    setIsLoadingRankings(true);
+    try {
+      const [clientesData, produtosData] = await Promise.all([
         dashboardService.getTopClientes(10),
         dashboardService.getTopProdutos(10),
       ]);
-      setSummary(summaryData);
-      setProfitSeries(seriesData);
       setTopClientes(clientesData);
       setTopProdutos(produtosData);
     } catch {
-      setErrorMessage('Não foi possível carregar as informações do negócio.');
+      setErrorMessage('Não foi possível carregar os rankings.');
     } finally {
-      setIsLoadingNegocio(false);
+      setIsLoadingRankings(false);
+    }
+  }, []);
+
+  const loadResultado = useCallback(async (preset: SummaryPreset) => {
+    setIsLoadingResultado(true);
+    try {
+      setSummary(await dashboardService.getSummary(preset));
+    } catch {
+      setErrorMessage('Não foi possível carregar o resultado do período.');
+    } finally {
+      setIsLoadingResultado(false);
     }
   }, []);
 
   useEffect(() => { loadPendencias(); }, [loadPendencias]);
-  useEffect(() => { if (aba === 'negocio') loadNegocio(summaryPreset, seriesPreset); }, [aba, summaryPreset, seriesPreset, loadNegocio]);
+
+  useEffect(() => {
+    if (aba === 'negocio') {
+      loadEstoqueAgora();
+      loadRankings();
+    }
+  }, [aba, loadEstoqueAgora, loadRankings]);
+
+  useEffect(() => { if (aba === 'negocio') loadResultado(summaryPreset); }, [aba, summaryPreset, loadResultado]);
 
   const handleMarcarEntregue = async (id: number) => {
     setEntregandoIds(prev => new Set(prev).add(id));
@@ -183,6 +159,7 @@ export function Dashboard() {
   };
 
   const totalPendente = devedores.reduce((acc, d) => acc + d.totalDebt, 0);
+  const totalPendenciasBadge = devedores.length + entregasPendentes.length + aguardandoReposicao.length;
 
   return (
     <div className="container-fluid px-3 px-lg-4 py-3 py-lg-4 dashboard-tela">
@@ -201,9 +178,9 @@ export function Dashboard() {
           className={`btn btn-lg fw-semibold flex-grow-1 flex-lg-grow-0 ${aba === 'pendencias' ? 'btn-primary' : 'btn-outline-secondary'}`}
           onClick={() => setAba('pendencias')}
         >
-          🔔 Pendências
-          {(devedores.length + entregasPendentes.length) > 0 && (
-            <span className="badge bg-danger rounded-pill ms-2">{devedores.length + entregasPendentes.length}</span>
+          Pendências
+          {totalPendenciasBadge > 0 && (
+            <span className="badge bg-danger rounded-pill ms-2">{totalPendenciasBadge}</span>
           )}
         </button>
         <button
@@ -211,7 +188,14 @@ export function Dashboard() {
           className={`btn btn-lg fw-semibold flex-grow-1 flex-lg-grow-0 ${aba === 'negocio' ? 'btn-primary' : 'btn-outline-secondary'}`}
           onClick={() => setAba('negocio')}
         >
-          📊 Meu Negócio
+          Meu Negócio
+        </button>
+        <button
+          type="button"
+          className={`btn btn-lg fw-semibold flex-grow-1 flex-lg-grow-0 ${aba === 'graficos' ? 'btn-primary' : 'btn-outline-secondary'}`}
+          onClick={() => setAba('graficos')}
+        >
+          Gráficos
         </button>
       </div>
 
@@ -228,7 +212,7 @@ export function Dashboard() {
                 {isLoadingPendencias ? (
                   <div className="text-center text-muted py-5">Carregando...</div>
                 ) : devedores.length === 0 ? (
-                  <div className="text-center text-muted py-5 fs-5">🎉 Ninguém devendo agora!</div>
+                  <div className="text-center text-muted py-5 fs-5">Ninguém devendo agora.</div>
                 ) : (
                   <ul className="list-group list-group-flush">
                     {devedores.map(d => (
@@ -277,7 +261,7 @@ export function Dashboard() {
                 {isLoadingPendencias ? (
                   <div className="text-center text-muted py-5">Carregando...</div>
                 ) : entregasPendentes.length === 0 ? (
-                  <div className="text-center text-muted py-5 fs-5">✅ Tudo entregue!</div>
+                  <div className="text-center text-muted py-5 fs-5">Tudo entregue.</div>
                 ) : (
                   <ul className="list-group list-group-flush">
                     {entregasPendentes.map(e => (
@@ -293,7 +277,7 @@ export function Dashboard() {
                             disabled={entregandoIds.has(e.id)}
                             onClick={() => handleMarcarEntregue(e.id)}
                           >
-                            {entregandoIds.has(e.id) ? 'Salvando...' : '✅ Marcar como Recebido'}
+                            {entregandoIds.has(e.id) ? 'Salvando...' : 'Marcar como Recebido'}
                           </button>
                         </div>
                       </li>
@@ -307,14 +291,46 @@ export function Dashboard() {
           <div className="col-12">
             <div className="card shadow-sm">
               <div className="card-header bg-white d-flex justify-content-between align-items-center">
+                <span className="fw-semibold fs-5">Aguardando reposição</span>
+                {aguardandoReposicao.length > 0 && (
+                  <Link to="/entradas" className="btn btn-sm btn-warning">Registrar Entrada</Link>
+                )}
+              </div>
+              <div className="card-body p-0">
+                {isLoadingPendencias ? (
+                  <div className="text-center text-muted py-4">Carregando...</div>
+                ) : aguardandoReposicao.length === 0 ? (
+                  <div className="text-center text-muted py-4">Nenhuma venda sob encomenda esperando reposição.</div>
+                ) : (
+                  <ul className="list-group list-group-flush">
+                    {aguardandoReposicao.map(item => (
+                      <li key={item.productId} className="list-group-item d-flex justify-content-between align-items-center p-3">
+                        <div>
+                          <div className="fw-bold">{item.productName}</div>
+                          <div className="text-muted small">
+                            Prometido a: {item.clientes.join(', ')}
+                          </div>
+                        </div>
+                        <span className="badge bg-warning text-dark fs-6">{item.quantidadePendente} un</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="col-12">
+            <div className="card shadow-sm">
+              <div className="card-header bg-white d-flex justify-content-between align-items-center">
                 <span className="fw-semibold fs-5">Estoque baixo</span>
-                <Link to="/produtos" className="btn btn-sm btn-outline-primary">Ver tudo em Estoque →</Link>
+                <Link to="/produtos" className="btn btn-sm btn-outline-primary">Ver estoque</Link>
               </div>
               <div className="card-body p-0">
                 {isLoadingPendencias ? (
                   <div className="text-center text-muted py-4">Carregando...</div>
                 ) : lowStockPreview.length === 0 ? (
-                  <div className="text-center text-muted py-4">✅ Nenhum produto com estoque baixo.</div>
+                  <div className="text-center text-muted py-4">Nenhum produto com estoque baixo.</div>
                 ) : (
                   <ul className="list-group list-group-flush">
                     {lowStockPreview.map(p => (
@@ -336,88 +352,108 @@ export function Dashboard() {
       {/* ================= ABA: MEU NEGÓCIO ================= */}
       {aba === 'negocio' && (
         <>
-          <div className="card shadow-sm mb-3">
-            <div className="card-body d-flex flex-wrap gap-2">
-              {SUMMARY_PRESETS.map(p => (
-                <button
-                  key={p.value}
-                  type="button"
-                  className={`btn ${summaryPreset === p.value ? 'btn-primary' : 'btn-outline-secondary'}`}
-                  onClick={() => setSummaryPreset(p.value)}
-                >
-                  {p.label}
-                </button>
-              ))}
+          <SecaoTitulo>Estoque agora</SecaoTitulo>
+          <div className="row g-3">
+            <div className="col-6">
+              <div className="card shadow-sm h-100 kpi-card">
+                <div className="card-body">
+                  <div className="text-muted small">Valor investido em estoque</div>
+                  <div className="fs-3 fw-bold">
+                    {isLoadingEstoqueAgora ? '...' : formatMoney(estoqueValor?.valorInvestido ?? 0)}
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="col-6">
+              <div className="card shadow-sm h-100 kpi-card">
+                <div className="card-body">
+                  <div className="text-muted small">Unidades em estoque</div>
+                  <div className="fs-3 fw-bold">
+                    {isLoadingEstoqueAgora ? '...' : `${estoqueValor?.unidadesEmEstoque ?? 0} un`}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
+          <SecaoTitulo>Resultado do período</SecaoTitulo>
+          <div className="d-flex flex-wrap gap-2 mb-3">
+            {SUMMARY_PRESETS.map(p => (
+              <button
+                key={p.value}
+                type="button"
+                className={`btn ${summaryPreset === p.value ? 'btn-primary' : 'btn-outline-secondary'}`}
+                onClick={() => setSummaryPreset(p.value)}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+
           <div className="row g-3 mb-3">
-            <div className="col-6 col-lg-4">
+            <div className="col-6 col-lg-3">
               <div className="card shadow-sm h-100 kpi-card">
                 <div className="card-body">
                   <div className="text-muted small">Quanto entrou</div>
-                  <div className="fs-3 fw-bold">{isLoadingNegocio ? '...' : formatMoney(summary?.revenue ?? 0)}</div>
+                  <div className="fs-3 fw-bold">{isLoadingResultado ? '...' : formatMoney(summary?.revenue ?? 0)}</div>
                 </div>
               </div>
             </div>
-            <div className="col-6 col-lg-4">
+            <div className="col-6 col-lg-3">
               <div className="card shadow-sm h-100 kpi-card">
                 <div className="card-body">
                   <div className="text-muted small">Custo dos produtos</div>
-                  <div className="fs-3 fw-bold text-secondary">{isLoadingNegocio ? '...' : formatMoney(summary?.cost ?? 0)}</div>
+                  <div className="fs-3 fw-bold text-secondary">{isLoadingResultado ? '...' : formatMoney(summary?.cost ?? 0)}</div>
                 </div>
               </div>
             </div>
-            <div className="col-12 col-lg-4">
+            <div className="col-6 col-lg-3">
               <div className="card shadow-sm h-100 kpi-card border-success">
                 <div className="card-body">
                   <div className="text-muted small">Lucro</div>
                   <div className={`fs-3 fw-bold ${(summary?.profit ?? 0) >= 0 ? 'text-success' : 'text-danger'}`}>
-                    {isLoadingNegocio ? '...' : formatMoney(summary?.profit ?? 0)}
+                    {isLoadingResultado ? '...' : formatMoney(summary?.profit ?? 0)}
                   </div>
                   <div className="text-muted small mt-1">
-                    {isLoadingNegocio ? '' : `${summary?.salesCount ?? 0} vendas nesse período`}
+                    {isLoadingResultado ? '' : `${summary?.salesCount ?? 0} vendas`}
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="col-6 col-lg-3">
+              <div className="card shadow-sm h-100 kpi-card">
+                <div className="card-body">
+                  <div className="text-muted small">Ticket Médio</div>
+                  <div className="fs-3 fw-bold">{isLoadingResultado ? '...' : formatMoney(summary?.averageTicket ?? 0)}</div>
+                  <div className="text-muted small mt-1">
+                    {isLoadingResultado ? '' : `${summary?.unitsSold ?? 0} unidades`}
                   </div>
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="card shadow-sm mb-3">
-            <div className="card-header bg-white d-flex flex-wrap justify-content-between align-items-center gap-2">
-              <span className="fw-semibold">Evolução do lucro</span>
-              <div className="btn-group">
-                {SERIES_PRESETS.map(p => (
-                  <button
-                    key={p.value}
-                    type="button"
-                    className={`btn btn-sm ${seriesPreset === p.value ? 'btn-primary' : 'btn-outline-secondary'}`}
-                    onClick={() => setSeriesPreset(p.value)}
-                  >
-                    {p.label}
-                  </button>
-                ))}
-              </div>
+          {!isLoadingResultado && (summary?.pendingCostRevenue ?? 0) > 0 && (
+            <div className="alert alert-warning mb-3">
+              {formatMoney(summary!.pendingCostRevenue)} em vendas desse período aguardando reposição
+              — o lucro entra na conta quando a mercadoria chegar.
             </div>
-            <div className="card-body">
-              {isLoadingNegocio ? <div className="text-center text-muted py-5">Carregando...</div> : <ProfitChart data={profitSeries} />}
-            </div>
-          </div>
+          )}
 
+          <SecaoTitulo>Desde o início</SecaoTitulo>
           <div className="row g-3">
-            {/* Melhores Clientes */}
             <div className="col-lg-6">
               <div className="card shadow-sm h-100">
                 <div className="card-header bg-white"><span className="fw-semibold fs-5">Melhores Clientes</span></div>
                 <div className="card-body">
-                  {isLoadingNegocio ? (
+                  {isLoadingRankings ? (
                     <div className="text-center text-muted py-4">Carregando...</div>
                   ) : topClientes.length === 0 ? (
                     <div className="text-center text-muted py-4">Ainda sem vendas com cliente identificado.</div>
                   ) : (
                     <>
                       <div className="p-3 mb-3 rounded-4 melhor-cliente-card">
-                        <div className="text-muted mb-1">🏆 Seu melhor cliente</div>
+                        <div className="text-muted mb-1">Seu melhor cliente</div>
                         <div className="fs-4 fw-bold">{topClientes[0].name}</div>
                         {topClientes[0].notes && (
                           <div className="text-primary fst-italic small">{topClientes[0].notes}</div>
@@ -447,12 +483,11 @@ export function Dashboard() {
               </div>
             </div>
 
-            {/* Top Produtos */}
             <div className="col-lg-6">
               <div className="card shadow-sm h-100">
                 <div className="card-header bg-white"><span className="fw-semibold fs-5">Produtos mais vendidos</span></div>
                 <div className="card-body p-0">
-                  {isLoadingNegocio ? (
+                  {isLoadingRankings ? (
                     <div className="text-center text-muted py-4">Carregando...</div>
                   ) : topProdutos.length === 0 ? (
                     <div className="text-center text-muted py-4">Ainda não há vendas registradas.</div>
@@ -481,6 +516,9 @@ export function Dashboard() {
           </div>
         </>
       )}
+
+      {/* ================= ABA: GRÁFICOS ================= */}
+      {aba === 'graficos' && <Graficos />}
     </div>
   );
 }

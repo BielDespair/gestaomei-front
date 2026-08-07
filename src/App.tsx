@@ -8,6 +8,7 @@ import { Produtos } from './pages/Produtos';
 import { Clientes } from './pages/Clientes';
 import { Entradas } from './pages/Entradas';
 import { Vendas } from './pages/Vendas';
+import { FeedbackProvider } from './components/Feedback/FeedbackProvider';
 
 // Componente provisório (Mock) — só falta implementar essa tela ainda
 const Estoque = () => <h2>Controle de Estoque</h2>;
@@ -15,27 +16,30 @@ const Estoque = () => <h2>Controle de Estoque</h2>;
 
 function App() {
   return (
-    <AuthProvider>
-      <BrowserRouter>
-        <Routes>
-          {/* Rota Pública */}
-          <Route path="/login" element={<Login />} />
 
-          {/* Rotas Protegidas (Exigem Login) */}
-          <Route element={<PrivateRoute />}>
-            {/* O Layout contém a Navbar. Tudo aqui dentro cai no <Outlet /> do Layout */}
-            <Route element={<Layout />}>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/vendas" element={<Vendas />} />
-              <Route path="/entradas" element={<Entradas />} />
-              <Route path="/estoque" element={<Estoque />} />
-              <Route path="/produtos" element={<Produtos />} />
-              <Route path="/clientes" element={<Clientes />} />
+    <FeedbackProvider>
+      <AuthProvider>
+        <BrowserRouter>
+          <Routes>
+            {/* Rota Pública */}
+            <Route path="/login" element={<Login />} />
+
+            {/* Rotas Protegidas (Exigem Login) */}
+            <Route element={<PrivateRoute />}>
+              {/* O Layout contém a Navbar. Tudo aqui dentro cai no <Outlet /> do Layout */}
+              <Route element={<Layout />}>
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/vendas" element={<Vendas />} />
+                <Route path="/entradas" element={<Entradas />} />
+                <Route path="/estoque" element={<Estoque />} />
+                <Route path="/produtos" element={<Produtos />} />
+                <Route path="/clientes" element={<Clientes />} />
+              </Route>
             </Route>
-          </Route>
-        </Routes>
-      </BrowserRouter>
-    </AuthProvider>
+          </Routes>
+        </BrowserRouter>
+      </AuthProvider>
+    </FeedbackProvider>
   );
 }
 

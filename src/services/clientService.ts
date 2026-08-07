@@ -1,53 +1,47 @@
+import type { Client, ClientList, RegisterPayment } from '../types/api/Client';
+import type { Payment } from '../types/models/Payment';
 import { apiFetch } from './api';
 
-export interface DebtDetail {
-  id: string;
-  date: string;
-  productName: string;
-  quantity: number;
-  unitPrice: number;
-  totalPrice: number;
-}
 
-export interface Client {
-  id: number;
-  name: string;
-  document: string;
-  phone: string;
-  email: string;
-  pix: string;
+const ENDPOINT = "/clients";
 
-  zipCode: string;
-  address: string;
-  number: string;
-  neighborhood: string;
-  city: string;
-  state: string;
 
-  notes: string;
 
-  totalDebt: number;
-  debts: DebtDetail[];
-}
-
-type ClientInput = Omit<Client, 'id' | 'totalDebt' | 'debts'>;
+type ClientInput = Omit<ClientList, 'id' | 'totalDebt' | 'debts'>;
 
 export const clientService = {
-  getClients: (): Promise<Client[]> => apiFetch('/clients'),
+	getClients: async (): Promise<ClientList[]> => {
+		const clients = await apiFetch<ClientList[]>(ENDPOINT);
 
-  addClient: (clientData: ClientInput): Promise<Client> =>
-    apiFetch('/clients', {
-      method: 'POST',
-      body: JSON.stringify(clientData),
-    }),
+		return clients;
+	},
 
-  updateClient: (id: number, clientData: ClientInput): Promise<Client> =>
-    apiFetch(`/clients/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(clientData),
-    }),
+	getClient: async (id: number): Promise<Client> => {
+		const client = await apiFetch<Client>(`${ENDPOINT}/${id}`);
+		return client;
 
-  // Novo: quita (remove) todas as dívidas do cliente de uma vez.
-  quitarDivida: (id: number): Promise<Client> =>
-    apiFetch(`/clients/${id}/quitar-divida`, { method: 'POST' }),
+	},
+
+	addClient: (clientData: ClientInput): Promise<Client> =>
+		apiFetch(ENDPOINT, {
+			method: 'POST',
+			body: JSON.stringify(clientData),
+		}),
+
+	updateClient: (id: number, clientData: ClientInput): Promise<Client> =>
+		apiFetch(`${ENDPOINT}/${id}`, {
+			method: 'PUT',
+			body: JSON.stringify(clientData),
+		}),
+
+	registerPayment: async (clientId: number, payload: RegisterPayment): Promise<Payment> => {
+		const response = await apiFetch<Payment>(`${ENDPOINT}/${clientId}/payments`, {
+			method: 'POST',
+			body: JSON.stringify(payload),
+		});
+
+		return response;
+	},
+
+	deleteClient: (id: number): Promise<Client> => apiFetch(`${ENDPOINT}/${id}`, { method: 'DELETE' }),
 };

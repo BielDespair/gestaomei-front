@@ -1,385 +1,132 @@
-import React, { useEffect, useState } from 'react';
-import { clientService, type Client } from '../../services/clientService';
-import { cepService } from '../../services/cepService';
 import '../../styles/shared-tables.css';
-
-const initialFormState = {
-  name: '', document: '', phone: '', email: '', pix: '',
-  zipCode: '', address: '', number: '', neighborhood: '', city: '', state: '',
-  notes: ''
-};
+import '../../assets/bootstrap-icons/bootstrap-icons.css'
+import { useEffect, useState } from 'react';
+import type { ClientList } from '../../types/api/Client';
+import { clientService } from '../../services/clientService';
+import { formatMoney, formatPhone, formatDocument } from '../../utils/format';
+import { useClienteModal } from './modal/ClienteModalProvider';
 
 export function Clientes() {
-  const [clients, setClients] = useState<Client[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
-  const [isFetchingCep, setIsFetchingCep] = useState(false);
-  const [isQuitando, setIsQuitando] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
+	const [clients, setClients] = useState<ClientList[]>([]);
+	const [isLoading, setIsLoading] = useState(true);
+	const [errorMessage, setErrorMessage] = useState('');
 
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [formData, setFormData] = useState(initialFormState);
+	const { abrirCliente, novoCliente, excluirCliente } = useClienteModal();
 
-  const [isDebtModalOpen, setIsDebtModalOpen] = useState(false);
-  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+	useEffect(() => { loadClients(); }, []);
 
-  useEffect(() => { loadClients(); }, []);
+	async function loadClients() {
+		setIsLoading(true);
+		try {
+			const data = await clientService.getClients();
+			if (!Array.isArray(data)) throw new Error('Resposta inválida da API');
+			setClients(data);
+		} catch {
+			setErrorMessage('Não foi possível carregar os clientes.');
+		} finally {
+			setIsLoading(false);
+		}
+	}
 
-  async function loadClients() {
-    setIsLoading(true);
-    try {
-      setClients(await clientService.getClients());
-    } catch (error) {
-      setErrorMessage('Não foi possível carregar os clientes.');
-    } finally {
-      setIsLoading(false);
-    }
-  }
+	// Toda abertura recarrega a lista se algo mudou.
+	const opts = { onChanged: loadClients };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
+	return (
+		<div className="clientes-page">
+			<div className="page-header">
+				<h2 className="page-title">Cadastro de clientes</h2>
+				<button className="btn btn-primary" onClick={() => novoCliente(opts)}>
+					+ Novo cliente
+				</button>
+			</div>
 
-  const handleCepBlur = async (e: React.FocusEvent<HTMLInputElement>) => {
-    const cep = e.target.value;
-    if (cep.length >= 8) {
-      setIsFetchingCep(true);
-      const data = await cepService.fetchCep(cep);
-      if (data) {
-        setFormData(prev => ({
-          ...prev,
-          address: data.logradouro,
-          neighborhood: data.bairro,
-          city: data.localidade,
-          state: data.uf
-        }));
-      }
-      setIsFetchingCep(false);
-    }
-  };
+			{errorMessage && (
+				<div className="alert alert-danger d-flex justify-content-between align-items-center">
+					<span>{errorMessage}</span>
+					<button type="button" className="btn-close" onClick={() => setErrorMessage('')} />
+				</div>
+			)}
 
-  const handleNewClick = () => {
-    setEditingId(null);
-    setFormData(initialFormState);
-    setErrorMessage('');
-    setIsModalOpen(true);
-  };
+			{isLoading ? <p>Carregando clientes…</p> : (
+				<div className="table-responsive">
+					<table className="table table-striped table-hover">
+						<thead>
+							<tr>
+								<th>Nome / contato</th>
+								<th>CPF / CNPJ</th>
+								<th>Bairro</th>
+								<th>Observações</th>
+								<th>Status</th>
+								<th className="text-end">Ações</th>
+							</tr>
+						</thead>
+						<tbody>
+							{clients.map(client => (
+								<tr key={client.id}>
+									<td>
+										<strong>{client.name}</strong>
+										<br />
+										<small className="text-muted">
+											{client.phoneNumber ? formatPhone(client.phoneNumber) : 'Sem telefone'}
+										</small>
+									</td>
+									<td>{formatDocument(client.document)}</td>
+									<td>{client.district || '-'}</td>
+									<td style={{ maxWidth: '250px' }}>
+										<small className="fst-italic text-secondary">{client.description || '-'}</small>
+									</td>
+									<td>
+										{client.totalDebt > 0 ? (
+											<span className="text-danger fw-bold">
+												Devendo {formatMoney(client.totalDebt)}
+											</span>
+										) : (
+											<span className="badge bg-success">Em dia</span>
+										)}
+									</td>
+									<td>
+										<div className="d-flex gap-1 justify-content-end">
+											<button
+												type="button"
+												className="btn btn-sm btn-secondary"
+												title="Ver cliente"
+												onClick={() => abrirCliente(client.id, opts)}
+											>
+												<i className="bi bi-eye" aria-hidden="true" />
+												<span className="visually-hidden">Ver {client.name}</span>
+											</button>
 
-  const handleEditClick = (client: Client) => {
-    setEditingId(client.id);
-    setFormData({
-      name: client.name, document: client.document, phone: client.phone,
-      email: client.email, pix: client.pix, zipCode: client.zipCode,
-      address: client.address, number: client.number, neighborhood: client.neighborhood,
-      city: client.city, state: client.state, notes: client.notes
-    });
-    setErrorMessage('');
-    setIsModalOpen(true);
-  };
+											<button
+												type="button"
+												className="btn btn-sm btn-warning"
+												onClick={() => abrirCliente(client.id, { ...opts, mode: 'edit' })}
+											>
+												Editar
+											</button>
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrorMessage('');
-    setIsSaving(true);
-    try {
-      if (editingId) {
-        const updated = await clientService.updateClient(editingId, formData);
-        setClients(prev => prev.map(c => c.id === editingId ? updated : c));
-      } else {
-        const novo = await clientService.addClient(formData);
-        setClients(prev => [...prev, novo]);
-      }
-      setIsModalOpen(false);
-    } catch (error: any) {
-      setErrorMessage(error?.message || 'Falha ao salvar o cliente.');
-    } finally {
-      setIsSaving(false);
-    }
-  };
+											<button
+												type="button"
+												className="btn btn-sm btn-outline-danger"
+												onClick={() => excluirCliente(client, opts)}
+											>
+												Excluir
+											</button>
+										</div>
+									</td>
+								</tr>
+							))}
 
-  const handleViewDebt = (client: Client) => {
-    setSelectedClient(client);
-    setIsDebtModalOpen(true);
-  };
-
-  const handleQuitarDivida = async () => {
-    if (!selectedClient) return;
-    const confirmado = window.confirm(
-      `Marcar toda a dívida de ${selectedClient.name} (${formatMoney(selectedClient.totalDebt)}) como paga?`
-    );
-    if (!confirmado) return;
-
-    setIsQuitando(true);
-    try {
-      const atualizado = await clientService.quitarDivida(selectedClient.id);
-      setClients(prev => prev.map(c => (c.id === atualizado.id ? atualizado : c)));
-      setIsDebtModalOpen(false);
-    } catch (error: any) {
-      setErrorMessage(error?.message || 'Não foi possível quitar a dívida.');
-    } finally {
-      setIsQuitando(false);
-    }
-  };
-
-  const formatMoney = (value: number) => value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-
-  return (
-    <div>
-      <div className="page-header">
-        <h2 className="page-title">Cadastro de Clientes</h2>
-        <button className="btn btn-primary" onClick={handleNewClick}>+ Novo Cliente</button>
-      </div>
-
-      {errorMessage && (
-        <div className="alert alert-danger d-flex justify-content-between align-items-center">
-          <span>{errorMessage}</span>
-          <button type="button" className="btn-close" onClick={() => setErrorMessage('')}></button>
-        </div>
-      )}
-
-      {isLoading ? <p>Carregando clientes...</p> : (
-        <div className="table-responsive">
-          <table className="table table-striped table-hover">
-            <thead>
-              <tr>
-                <th>Nome / Contato</th>
-                <th>CPF / CNPJ</th>
-                <th>Bairro</th>
-                <th>Observações</th>
-                <th>Status / Dívida</th>
-                <th>Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              {clients.map(client => (
-                <tr key={client.id}>
-                  <td>
-                    <strong>{client.name}</strong>
-                    <br />
-                    <small style={{ color: '#6c757d' }}>{client.phone || 'Sem telefone'}</small>
-                  </td>
-                  <td>{client.document || '-'}</td>
-                  <td>{client.neighborhood || '-'}</td>
-
-                  <td style={{ maxWidth: '250px' }}>
-                    <small style={{ color: '#495057', fontStyle: 'italic' }}>
-                      {client.notes || '-'}
-                    </small>
-                  </td>
-
-                  <td>
-                    {client.totalDebt > 0 ? (
-                      <span className="text-danger" style={{ fontWeight: 'bold' }}>
-                        Devendo: {formatMoney(client.totalDebt)}
-                      </span>
-                    ) : (
-                      <span className="badge bg-success">Em Dia</span>
-                    )}
-                  </td>
-                  <td>
-                    <div className="action-buttons">
-                      {client.totalDebt > 0 && (
-                        <button
-                          className="btn btn-sm btn-outline-danger"
-                          onClick={() => handleViewDebt(client)}
-                        >
-                          Ver Débitos
-                        </button>
-                      )}
-                      <button
-                        className="btn btn-sm btn-outline-primary"
-                        onClick={() => handleEditClick(client)}
-                      >
-                        Editar
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-
-              {clients.length === 0 && (
-                <tr>
-                  <td colSpan={6} style={{ textAlign: 'center', padding: '2rem' }}>Nenhum cliente cadastrado.</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* --- MODAL DE CADASTRO --- */}
-      {isModalOpen && (
-        <>
-          <div className="modal fade show d-block" tabIndex={-1}>
-            <div className="modal-dialog modal-xl">
-              <div className="modal-content">
-                <div className="modal-header">
-                  <h5 className="modal-title">{editingId ? 'Editar Cliente' : 'Novo Cliente'}</h5>
-                  <button
-                    type="button"
-                    className="btn-close"
-                    onClick={() => setIsModalOpen(false)}
-                  />
-                </div>
-
-                <form onSubmit={handleSubmit}>
-                  <div className="modal-body" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
-
-                    <h6 style={{ color: '#0d6efd', marginBottom: '1rem' }}>Dados Básicos</h6>
-                    <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
-                      <div style={{ flex: 2 }}>
-                        <label className="form-label">Nome Completo *</label>
-                        <input type="text" className="form-control" name="name" value={formData.name} onChange={handleInputChange} required />
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <label className="form-label">CPF / CNPJ</label>
-                        <input type="text" className="form-control" name="document" value={formData.document} onChange={handleInputChange} />
-                      </div>
-                    </div>
-
-                    <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
-                      <div style={{ flex: 1 }}>
-                        <label className="form-label">Telefone / WhatsApp</label>
-                        <input type="text" className="form-control" name="phone" value={formData.phone} onChange={handleInputChange} />
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <label className="form-label">E-mail</label>
-                        <input type="email" className="form-control" name="email" value={formData.email} onChange={handleInputChange} />
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <label className="form-label">Chave PIX</label>
-                        <input type="text" className="form-control" name="pix" value={formData.pix} onChange={handleInputChange} />
-                      </div>
-                    </div>
-
-                    <hr style={{ borderColor: '#dee2e6', margin: '1.5rem 0' }} />
-
-                    <h6 style={{ color: '#0d6efd', marginBottom: '1rem' }}>Endereço</h6>
-                    <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
-                      <div style={{ width: '150px' }}>
-                        <label className="form-label">CEP</label>
-                        <input
-                          type="text"
-                          className="form-control"
-                          name="zipCode"
-                          value={formData.zipCode}
-                          onChange={handleInputChange}
-                          onBlur={handleCepBlur}
-                          placeholder="Somente números"
-                        />
-                        {isFetchingCep && <small className="text-info">Buscando...</small>}
-                      </div>
-                      <div style={{ flex: 2 }}>
-                        <label className="form-label">Endereço (Rua/Av)</label>
-                        <input type="text" className="form-control" name="address" value={formData.address} onChange={handleInputChange} />
-                      </div>
-                      <div style={{ width: '100px' }}>
-                        <label className="form-label">Número</label>
-                        <input type="text" className="form-control" name="number" value={formData.number} onChange={handleInputChange} />
-                      </div>
-                    </div>
-
-                    <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
-                      <div style={{ flex: 1 }}>
-                        <label className="form-label">Bairro</label>
-                        <input type="text" className="form-control" name="neighborhood" value={formData.neighborhood} onChange={handleInputChange} />
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <label className="form-label">Cidade</label>
-                        <input type="text" className="form-control" name="city" value={formData.city} onChange={handleInputChange} />
-                      </div>
-                      <div style={{ width: '80px' }}>
-                        <label className="form-label">UF</label>
-                        <input type="text" className="form-control" name="state" value={formData.state} onChange={handleInputChange} maxLength={2} />
-                      </div>
-                    </div>
-
-                    <hr style={{ borderColor: '#dee2e6', margin: '1.5rem 0' }} />
-
-                    <div className="mb-3">
-                      <label className="form-label" style={{ color: '#0d6efd', fontWeight: 500 }}>Observações Internas (Como identificar o cliente)</label>
-                      <textarea className="form-control" name="notes" value={formData.notes} onChange={handleInputChange} rows={2} placeholder="Ex: Primo do Carlos, dono da padaria da esquina..." />
-                    </div>
-
-                  </div>
-
-                  <div className="modal-footer" style={{ borderTop: '1px solid #dee2e6', backgroundColor: '#f8f9fa' }}>
-                    <button type="button" className="btn btn-secondary" onClick={() => setIsModalOpen(false)}>Cancelar</button>
-                    <button type="submit" className="btn btn-primary" disabled={isSaving}>
-                      {isSaving ? 'Salvando...' : 'Salvar Cliente'}
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          </div>
-
-          <div className="modal-backdrop fade show"></div>
-        </>
-      )}
-
-      {/* --- MODAL DE DÍVIDAS --- */}
-      {isDebtModalOpen && selectedClient && (
-        <>
-          <div className="modal fade show d-block" tabIndex={-1}>
-            <div className="modal-dialog modal-lg">
-              <div className="modal-content">
-                <div className="modal-header">
-                  <h5 className="modal-title">Débitos: {selectedClient.name}</h5>
-                  <button type="button" className="btn-close" onClick={() => setIsDebtModalOpen(false)}>&times;</button>
-                </div>
-                <div className="modal-body">
-                  <div className="table-responsive">
-                    <table className="table table-striped">
-                      <thead>
-                        <tr>
-                          <th>Data</th>
-                          <th>Produto</th>
-                          <th>Qtd</th>
-                          <th>Total</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {selectedClient.debts.map(debt => (
-                          <tr key={debt.id}>
-                            <td>{debt.date}</td>
-                            <td>{debt.productName}</td>
-                            <td>{debt.quantity}</td>
-                            <td>{formatMoney(debt.totalPrice)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                      <tfoot>
-                        <tr>
-                          <td colSpan={3} style={{ textAlign: 'right', fontWeight: 'bold' }}>Dívida Total:</td>
-                          <td className="text-danger" style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>
-                            {formatMoney(selectedClient.totalDebt)}
-                          </td>
-                        </tr>
-                      </tfoot>
-                    </table>
-                  </div>
-                </div>
-                <div className="modal-footer">
-                  <button type="button" className="btn btn-secondary" onClick={() => setIsDebtModalOpen(false)}>Fechar</button>
-                  <button
-                    type="button"
-                    className="btn btn-success"
-                    disabled={isQuitando}
-                    onClick={handleQuitarDivida}
-                  >
-                    {isQuitando ? 'Salvando...' : '✅ Quitar Dívida (Recebido)'}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="modal-backdrop fade show"></div>
-        </>
-      )}
-    </div>
-  );
+							{clients.length === 0 && (
+								<tr>
+									<td colSpan={6} className="text-center py-4">
+										Nenhum cliente cadastrado ainda.
+									</td>
+								</tr>
+							)}
+						</tbody>
+					</table>
+				</div>
+			)}
+		</div>
+	);
 }

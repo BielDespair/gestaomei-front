@@ -66,9 +66,18 @@
   border-radius: 0.25rem;
 }
 
-.badge-success { background-color: #198754; }
-.badge-warning { background-color: #ffc107; color: #000; }
-.badge-danger { background-color: #dc3545; }
+.badge-success {
+  background-color: #198754;
+}
+
+.badge-warning {
+  background-color: #ffc107;
+  color: #000;
+}
+
+.badge-danger {
+  background-color: #dc3545;
+}
 
 
 
@@ -101,4 +110,3 @@
   justify-content: center;
   gap: 1rem;
 }
-

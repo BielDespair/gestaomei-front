@@ -8,7 +8,7 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 // relativo devolvido pela API (ex: a foto de um produto).
 export const API_BASE_URL = API_URL;
 
-const TOKEN_KEY = '@AppSogro:token';
+const TOKEN_KEY = '@AppGestaoMEI:token';
 
 let onUnauthorized: (() => void) | null = null;
 

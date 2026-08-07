@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { productService, type Product } from '../../services/productService';
-import { clientService, type Client } from '../../services/clientService';
+import { productService } from '../../services/productService';
+import { clientService } from '../../services/clientService';
 import { vendaService, type VendaItem } from '../../services/vendaService';
 import { HistoricoVendas } from './Historico';
 import './styles.css';
+import type { Product } from '../../types/api/Product';
 
 interface CartItem extends VendaItem {
   cartId: string;
@@ -44,12 +45,18 @@ export function Vendas() {
   useEffect(() => { loadData(); }, []);
 
   async function loadData() {
-    const [prodData, cliData] = await Promise.all([
+    const [prodResult, cliResult] = await Promise.allSettled([
       productService.getProducts(),
       clientService.getClients()
     ]);
-    setProducts(prodData);
-    setClients(cliData);
+
+    if (prodResult.status === "fulfilled") {
+      setProducts(prodResult.value);
+    }
+
+    if (cliResult.status === "fulfilled") {
+      setClients(cliResult.value ?? []);
+    }
   }
 
   const filteredClients = clients.filter(c => {
@@ -177,11 +184,10 @@ export function Vendas() {
                 <div className="card-body p-3">
                   <button
                     type="button"
-                    className={`btn w-100 d-flex justify-content-between align-items-center p-3 fs-5 ${
-                      selectedClient
-                        ? 'btn-outline-primary bg-primary-subtle border-primary fw-bold'
-                        : 'btn-outline-secondary border-dashed'
-                    }`}
+                    className={`btn w-100 d-flex justify-content-between align-items-center p-3 fs-5 ${selectedClient
+                      ? 'btn-outline-primary bg-primary-subtle border-primary fw-bold'
+                      : 'btn-outline-secondary border-dashed'
+                      }`}
                     onClick={openClientModal}
                   >
                     <span>{selectedClient ? `👤 ${selectedClient.name}` : '👤 Toque para vincular um cliente (opcional)'}</span>
@@ -207,8 +213,8 @@ export function Vendas() {
                   ) : (
                     <div className="row row-cols-2 row-cols-lg-3 row-cols-xl-3 g-3">
                       {products.map(product => {
-                        const semEstoque = product.stock <= 0;
-                        const imgSrc = productService.getImageUrl(product);
+                        const semEstoque = product.stockQuantity <= 0;
+                        const imgSrc = product.imageUrl;
                         return (
                           <div className="col" key={product.id}>
                             <div
@@ -229,7 +235,7 @@ export function Vendas() {
                                   <div className="text-muted mb-3">
                                     {semEstoque
                                       ? <span className="text-danger">Venda sob encomenda</span>
-                                      : `Estoque: ${product.stock} un`}
+                                      : `Estoque: ${product.stockQuantity} un`}
                                   </div>
                                 </div>
                                 <div className="d-flex justify-content-between align-items-center">
@@ -390,9 +396,9 @@ export function Vendas() {
                   <div className="modal-content rounded-4">
                     <div className="modal-header p-4">
                       <div className="d-flex align-items-center gap-3">
-                        {productService.getImageUrl(addingProduct) ? (
+                        {addingProduct.imageUrl ? (
                           <img
-                            src={productService.getImageUrl(addingProduct)!}
+                            src={addingProduct.imageUrl!}
                             alt={addingProduct.name}
                             className="produto-modal-thumb"
                           />

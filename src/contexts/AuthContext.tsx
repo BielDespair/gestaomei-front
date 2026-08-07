@@ -1,9 +1,10 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
-import { authService, type LoginResponse } from '../services/authService';
+import { authService } from '../services/authService';
 import { getToken, clearToken, setUnauthorizedHandler } from '../services/api';
+import type { User } from '../types/models/User';
 
 interface AuthContextData {
-  user: LoginResponse['user'] | null;
+  user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean; // true enquanto valida um token salvo ao abrir o app
   signIn: (email: string, pass: string) => Promise<void>;
@@ -13,7 +14,7 @@ interface AuthContextData {
 const AuthContext = createContext<AuthContextData>({} as AuthContextData);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<LoginResponse['user'] | null>(null);
+  const [user, setUser] = useState<User| null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   function signOut() {
@@ -48,8 +49,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   async function signIn(email: string, pass: string) {
-    const response = await authService.login(email, pass);
-    setUser(response.user);
+    await authService.login(email, pass);
+    const me = await authService.me();
+    
+    const user: User = {
+      id: me.id,
+      name: me.name,
+      roles: me.roles
+    }
+    setUser(user);
   }
 
   return (

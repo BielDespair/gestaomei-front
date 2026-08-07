@@ -29,3 +29,10 @@ html, body {
   min-height: 100vh;
   text-align: left !important;
 }
+
+.btn-outline-warning {
+  --bs-btn-color: #997404;
+  --bs-btn-border-color: #ffc107;
+  --bs-btn-hover-bg: #ffc107;
+  --bs-btn-hover-color: #000;
+}

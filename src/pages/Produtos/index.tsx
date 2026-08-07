@@ -1,8 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { productService, type Product } from '../../services/productService';
+import { productService } from '../../services/productService';
+import type { Product } from '../../types/api/Product';
 import '../../styles/shared-tables.css';
 
-const initialFormState = { name: '', sku: '', costPrice: '', sellPrice: '', stock: '' };
+const initialFormState = { name: '', description: '', sku: '', sellPrice: '', stockQuantity: '' };
 
 export function Produtos() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -63,10 +64,10 @@ export function Produtos() {
     setEditingProduct(product);
     setFormData({
       name: product.name,
+      description: product.description,
       sku: product.sku,
-      costPrice: product.costPrice.toString(),
       sellPrice: product.sellPrice.toString(),
-      stock: product.stock.toString(),
+      stockQuantity: product.stockQuantity.toString(),
     });
     setErrorMessage('');
     resetImageState();
@@ -117,17 +118,18 @@ export function Produtos() {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.SubmitEvent) => {
     e.preventDefault();
     setErrorMessage('');
     setIsSaving(true);
     try {
       const payload = {
         name: formData.name,
+        description: "",
         sku: formData.sku,
-        costPrice: parseFloat(formData.costPrice),
         sellPrice: parseFloat(formData.sellPrice),
-        stock: parseInt(formData.stock, 10),
+        stockQuantity: parseInt(formData.stockQuantity, 10),
+        imageFile: imageFile
       };
 
       let produtoSalvo: Product;
@@ -135,21 +137,6 @@ export function Produtos() {
         produtoSalvo = await productService.updateProduct(editingProduct.id, payload);
       } else {
         produtoSalvo = await productService.addProduct(payload);
-      }
-
-      // Se uma foto nova foi escolhida, envia agora que já temos o id do produto
-      if (imageFile) {
-        setIsUploadingImage(true);
-        try {
-          produtoSalvo = await productService.uploadImage(produtoSalvo.id, imageFile);
-        } catch (imgError: any) {
-          // O produto já foi salvo; só a foto falhou — avisa mas não perde os dados digitados
-          setErrorMessage(
-            `Produto salvo, mas a foto não pôde ser enviada: ${imgError?.message || 'erro desconhecido'}`
-          );
-        } finally {
-          setIsUploadingImage(false);
-        }
       }
 
       setProducts(prev => {
@@ -170,27 +157,22 @@ export function Produtos() {
   const formatMoney = (value: number) =>
     value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-  const valorTotalEmEstoque = products.reduce((acc, p) => acc + p.stock * p.costPrice, 0);
+
 
   const linhaClasse = (p: Product) => {
-    if (p.stock <= 0) return 'linha-sem-estoque';
-    if (p.stock <= 10) return 'linha-estoque-baixo';
+    if (p.stockQuantity <= 0) return 'linha-sem-estoque';
+    if (p.stockQuantity <= 10) return 'linha-estoque-baixo';
     return '';
   };
 
   // Prioriza o preview local (foto recém-escolhida) sobre a foto já salva
-  const fotoParaExibirNoModal = imagePreview || (editingProduct ? productService.getImageUrl(editingProduct) : null);
+  const fotoParaExibirNoModal = imagePreview || (editingProduct ? editingProduct.imageUrl : null);
 
   return (
     <div>
       <div className="page-header">
         <div>
-          <h2 className="page-title">Estoque / Produtos</h2>
-          {!isLoading && products.length > 0 && (
-            <div className="text-muted mt-1">
-              Valor investido em estoque: <strong>{formatMoney(valorTotalEmEstoque)}</strong>
-            </div>
-          )}
+          <h2 className="page-title">Produtos</h2>
         </div>
         <button className="btn btn-primary" onClick={handleNewClick}>+ Novo Produto</button>
       </div>
@@ -217,7 +199,7 @@ export function Produtos() {
             </thead>
             <tbody>
               {products.map(product => {
-                const imgSrc = productService.getImageUrl(product);
+                const imgSrc = product.imageUrl;
                 return (
                   <tr key={product.id} className={linhaClasse(product)}>
                     <td>
@@ -230,12 +212,12 @@ export function Produtos() {
                     <td><strong>{product.sku}</strong></td>
                     <td>{product.name}</td>
                     <td>
-                      {product.stock <= 0 ? (
+                      {product.stockQuantity <= 0 ? (
                         <span className="badge bg-danger">Sem estoque</span>
-                      ) : product.stock <= 10 ? (
-                        <span className="badge bg-warning text-dark">{product.stock} un (baixo)</span>
+                      ) : product.stockQuantity <= 10 ? (
+                        <span className="badge bg-warning text-dark">{product.stockQuantity} un (baixo)</span>
                       ) : (
-                        <span>{product.stock} un</span>
+                        <span>{product.stockQuantity} un</span>
                       )}
                     </td>
                     <td style={{ color: '#198754', fontWeight: '500' }}>{formatMoney(product.sellPrice)}</td>
@@ -335,10 +317,6 @@ export function Produtos() {
                     </div>
                     <div style={{ display: 'flex', gap: '1rem' }}>
                       <div className="mb-3" style={{ flex: 1 }}>
-                        <label className="form-label">Custo Base (R$)</label>
-                        <input type="number" step="0.01" className="form-control" name="costPrice" value={formData.costPrice} onChange={handleInputChange} required />
-                      </div>
-                      <div className="mb-3" style={{ flex: 1 }}>
                         <label className="form-label">Preço Venda (R$)</label>
                         <input type="number" step="0.01" className="form-control" name="sellPrice" value={formData.sellPrice} onChange={handleInputChange} required />
                       </div>
@@ -348,19 +326,16 @@ export function Produtos() {
                           type="number"
                           className="form-control"
                           name="stock"
-                          value={formData.stock}
+                          value={formData.stockQuantity}
                           onChange={handleInputChange}
-                          disabled={!!editingProduct}
+                          disabled={true}
                           required
                         />
                       </div>
                     </div>
                     {editingProduct && (
                       <small className="text-muted d-block">
-                        O estoque não pode ser alterado por aqui — isso evita ele ficar
-                        dessincronizado do custo real (PEPS). Para aumentar, use{' '}
-                        <strong>Registrar Entrada</strong>. Para corrigir uma perda/quebra,
-                        avise quem cuida do sistema.
+                        O estoque não pode ser alterado diretamente para não dessincronizar os lotes.
                       </small>
                     )}
                   </div>

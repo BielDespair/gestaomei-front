@@ -2,7 +2,11 @@ import { useEffect, type ReactNode, type FormEvent } from 'react';
 
 interface Props {
 	title: ReactNode;
-	size?: 'lg' | 'xl';
+	size?: 'sm' | 'lg' | 'xl';
+	/** Centraliza verticalmente. */
+	centered?: boolean;
+	/** Sobrescreve a largura do modal-dialog, ex.: '450px'. */
+	maxWidth?: string;
 	onClose: () => void;
 	children: ReactNode;
 	footer?: ReactNode;
@@ -10,7 +14,10 @@ interface Props {
 	onSubmit?: (e: FormEvent) => void;
 }
 
-export function ModalShell({ title, size = 'lg', onClose, children, footer, onSubmit }: Props) {
+export function ModalShell({
+	title, size = 'lg', centered = false, maxWidth,
+	onClose, children, footer, onSubmit,
+}: Props) {
 	useEffect(() => {
 		const onKey = (e: KeyboardEvent) => {
 			if (e.key === 'Escape') onClose();
@@ -35,7 +42,10 @@ export function ModalShell({ title, size = 'lg', onClose, children, footer, onSu
 	return (
 		<>
 			<div className="modal fade show d-block" tabIndex={-1} role="dialog" aria-modal="true">
-				<div className={`modal-dialog modal-${size}`}>
+				<div
+					className={`modal-dialog modal-${size} ${centered ? 'modal-dialog-centered' : ''}`}
+					style={maxWidth ? { maxWidth } : undefined}
+				>
 					<div className="modal-content">
 						<div className="modal-header">
 							<h5 className="modal-title">{title}</h5>

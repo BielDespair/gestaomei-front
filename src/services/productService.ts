@@ -1,52 +1,46 @@
 import type { Product } from '../types/api/Product';
 import { apiFetch } from './api';
 
-interface ProductRequest extends Omit<Product, "id" | "stock" | "costPrice" | "imageUrl"> {
-  imageFile?: File | null;
+const ENDPOINT = '/products';
+
+export interface ProductRequest extends Omit<Product, 'id' | 'stock' | 'costPrice' | 'imageUrl' | 'stockQuantity'> {
+	imageFile?: File | null;
+}
+
+function toFormData(product: ProductRequest): FormData {
+	const formData = new FormData();
+
+	formData.append('name', product.name);
+	formData.append('description', product.description ?? '');
+	formData.append('sku', product.sku);
+	formData.append('sellPrice', String(product.sellPrice));
+
+	if (product.imageFile) {
+		formData.append('image', product.imageFile);
+	}
+
+	return formData;
 }
 
 export const productService = {
-  getProducts: (): Promise<Product[]> =>
-    apiFetch('/products'),
+	getProducts: (): Promise<Product[]> =>
+		apiFetch(ENDPOINT),
 
-  addProduct: (product: ProductRequest): Promise<Product> => {
-    const formData = new FormData();
+	addProduct: (product: ProductRequest): Promise<Product> =>
+		apiFetch(ENDPOINT, {
+			method: 'POST',
+			body: toFormData(product),
+		}),
 
-    formData.append("name", product.name);
-    formData.append("description", product.description)
-    formData.append("sku", product.sku);
-    formData.append("sellPrice", product.sellPrice.toString());
+	updateProduct: (id: number, product: ProductRequest): Promise<Product> =>
+		apiFetch(`${ENDPOINT}/${id}`, {
+			method: 'PUT',
+			body: toFormData(product),
+		}),
 
-    if (product.imageFile) {
-      formData.append("image", product.imageFile);
-    }
+	deleteProduct: (id: number): Promise<void> =>
+		apiFetch(`${ENDPOINT}/${id}`, { method: 'DELETE' }),
 
-    return apiFetch('/products', {
-      method: 'POST',
-      body: formData,
-    });
-  },
-
-  updateProduct: (id: number, product: ProductRequest): Promise<Product> => {
-    const formData = new FormData();
-
-    formData.append("name", product.name);
-    formData.append("description", product.description)
-    formData.append("sku", product.sku);
-    formData.append("sellPrice", product.sellPrice.toString());
-
-    if (product.imageFile) {
-      formData.append("image", product.imageFile);
-    }
-
-    return apiFetch(`/products/${id}`, {
-      method: 'PUT',
-      body: formData,
-    });
-  },
-
-  deleteProduct: (id: number): Promise<void> =>
-    apiFetch(`/products/${id}`, {
-      method: 'DELETE',
-    }),
+	removeImage: (id: number): Promise<Product> =>
+		apiFetch(`${ENDPOINT}/${id}/image`, { method: 'DELETE' }),
 };

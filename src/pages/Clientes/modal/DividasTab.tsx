@@ -61,7 +61,7 @@ function PainelPagamento({
 		setIsSaving(true);
 		setError('');
 		try {
-			await clientService.registrarPagamento(clientId, { amount: numero });
+			await clientService.registerPayment(clientId, { amount: numero });
 			onPago();
 		} catch (err: any) {
 			setError(err?.message || 'Não foi possível registrar o pagamento.');
@@ -138,15 +138,7 @@ function PainelPagamento({
 	);
 }
 
-function VendaEmAberto({
-	debt,
-	clientId,
-	onPago,
-}: {
-	debt: SaleDebt;
-	clientId: number;
-	onPago: () => void;
-}) {
+function VendaEmAberto({ debt, onPago}: { debt: SaleDebt; onPago: () => void;}) {
 	const [isOpen, setIsOpen] = useState(false);
 	const [isQuitando, setIsQuitando] = useState(false);
 	const temPagamento = debt.amountPaid > 0;
@@ -155,10 +147,7 @@ function VendaEmAberto({
 	async function quitar() {
 		setIsQuitando(true);
 		try {
-			await clientService.registrarPagamento(clientId, {
-				amount: debt.remaining,
-				saleId: debt.saleId,
-			});
+			
 			onPago();
 		} finally {
 			setIsQuitando(false);
@@ -306,7 +295,6 @@ export function DividasTab({ client, onRefresh }: TabProps) {
 				<VendaEmAberto
 					key={debt.saleId}
 					debt={debt}
-					clientId={client.id}
 					onPago={onRefresh}
 				/>
 			))}

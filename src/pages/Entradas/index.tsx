@@ -1,7 +1,9 @@
+import '../../styles/shared-tables.css';
+
 import React, { useEffect, useState } from 'react';
 import { entradaService, type Entrada } from '../../services/entradaService';
-import { productService, type Product } from '../../services/productService';
-import '../../styles/shared-tables.css';
+import { productService } from '../../services/productService';
+import type { Product } from '../../types/api/Product';
 
 export function Entradas() {
   const [entradas, setEntradas] = useState<Entrada[]>([]);

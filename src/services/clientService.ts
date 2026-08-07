@@ -7,7 +7,7 @@ const ENDPOINT = "/clients";
 
 
 
-type ClientInput = Omit<ClientList, 'id' | 'totalDebt' | 'debts'>;
+type ClientInput = Omit<Client, 'id' | 'debts'>;
 
 export const clientService = {
 	getClients: async (): Promise<ClientList[]> => {

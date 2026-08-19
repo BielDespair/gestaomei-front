@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import type { SaleDebt } from '../../../types/api/Client';
+import type { SaleDebt } from '../../../api/clients/clients.types';
 import type { TabProps } from './ClienteModal';
-import { clientService } from '../../../services/clientService';
 import { formatMoney, formatDate } from '../../../utils/format';
+import { useRegisterPayment } from '../../../api/clients/clients.queries';
 
 /** Centavos inteiros: evita 0.1 + 0.2 = 0.30000000000000004 nas comparações. */
 const cents = (v: number) => Math.round(v * 100);
@@ -35,46 +35,31 @@ function alocar(debts: SaleDebt[], valor: number) {
 	return { alocacoes, sobra: restante / 100 };
 }
 
-function PainelPagamento({
-	debts,
-	total,
-	clientId,
-	onPago,
-	onCancel,
-}: {
-	debts: SaleDebt[];
-	total: number;
-	clientId: number;
-	onPago: () => void;
-	onCancel: () => void;
-}) {
-	const [valor, setValor] = useState(String(total.toFixed(2)));
-	const [isSaving, setIsSaving] = useState(false);
-	const [error, setError] = useState('');
+function PainelPagamento({ debts, total, clientId, onPago, onCancel }: { debts: SaleDebt[]; total: number; clientId: number; onPago: () => void; onCancel: () => void; }) {
+	const [valor, setValor] = useState(total.toFixed(2).replace('.', ','));
+	const registerPayment = useRegisterPayment()
 
 	const numero = Number(valor.replace(',', '.')) || 0;
 	const excede = cents(numero) > cents(total);
 	const invalido = numero <= 0 || excede;
 	const { alocacoes } = alocar(debts, numero);
 
-	async function confirmar() {
-		setIsSaving(true);
-		setError('');
-		try {
-			await clientService.registerPayment(clientId, { amount: numero });
-			onPago();
-		} catch (err: any) {
-			setError(err?.message || 'Não foi possível registrar o pagamento.');
-		} finally {
-			setIsSaving(false);
-		}
+	function confirmar() {
+		registerPayment.mutate(
+			{ clientId, payload: { amount: numero } },
+			{ onSuccess: () => onPago() }
+		);
 	}
 
 	return (
 		<div className="border rounded p-3 mb-3">
 			<h6 className="mb-3">Receber pagamento</h6>
 
-			{error && <div className="alert alert-danger py-2">{error}</div>}
+			{registerPayment.isError && (
+				<div className="alert alert-danger py-2">
+					{registerPayment.error?.message || 'Não foi possível registrar o pagamento.'}
+				</div>
+			)}
 
 			<div className="row g-3 align-items-end mb-3">
 				<div className="col-sm-5">
@@ -95,7 +80,7 @@ function PainelPagamento({
 					<button
 						type="button"
 						className="btn btn-outline-secondary btn-sm"
-						onClick={() => setValor(total.toFixed(2))}
+						onClick={() => setValor(total.toFixed(2).replace(".", ","))}
 					>
 						Quitar tudo ({formatMoney(total)})
 					</button>
@@ -122,37 +107,26 @@ function PainelPagamento({
 			)}
 
 			<div className="d-flex gap-2">
-				<button type="button" className="btn btn-secondary btn-sm" onClick={onCancel} disabled={isSaving}>
+				<button type="button" className="btn btn-secondary btn-sm" onClick={onCancel} disabled={registerPayment.isPending}>
 					Cancelar
 				</button>
 				<button
 					type="button"
 					className="btn btn-success btn-sm"
 					onClick={confirmar}
-					disabled={invalido || isSaving}
+					disabled={ invalido || registerPayment.isPending }
 				>
-					{isSaving ? 'Registrando…' : 'Registrar pagamento'}
+					{ registerPayment.isPending ? 'Registrando…' : 'Registrar pagamento' }
 				</button>
 			</div>
 		</div>
 	);
 }
 
-function VendaEmAberto({ debt, onPago}: { debt: SaleDebt; onPago: () => void;}) {
+function VendaEmAberto({ debt }: { debt: SaleDebt }) {
 	const [isOpen, setIsOpen] = useState(false);
-	const [isQuitando, setIsQuitando] = useState(false);
 	const temPagamento = debt.amountPaid > 0;
 	const pctPago = debt.total > 0 ? (debt.amountPaid / debt.total) * 100 : 0;
-
-	async function quitar() {
-		setIsQuitando(true);
-		try {
-			
-			onPago();
-		} finally {
-			setIsQuitando(false);
-		}
-	}
 
 	return (
 		<div className="card mb-2">
@@ -196,15 +170,6 @@ function VendaEmAberto({ debt, onPago}: { debt: SaleDebt; onPago: () => void;}) 
 					>
 						{isOpen ? 'Ocultar itens' : `Ver itens (${debt.items.length})`}
 					</button>
-
-					<button
-						type="button"
-						className="btn btn-sm btn-outline-success"
-						onClick={quitar}
-						disabled={isQuitando}
-					>
-						{isQuitando ? 'Quitando…' : 'Quitar esta venda'}
-					</button>
 				</div>
 
 				{isOpen && (
@@ -236,7 +201,7 @@ function VendaEmAberto({ debt, onPago}: { debt: SaleDebt; onPago: () => void;}) 
 	);
 }
 
-export function DividasTab({ client, onRefresh }: TabProps) {
+export function DividasTab({ client }: TabProps) {
 	const [recebendo, setRecebendo] = useState(false);
 
 	// Mais antiga primeiro: é a ordem em que se cobra e em que se abate.
@@ -245,7 +210,6 @@ export function DividasTab({ client, onRefresh }: TabProps) {
 
 	function aposPagamento() {
 		setRecebendo(false);
-		onRefresh();
 	}
 
 	if (debts.length === 0) {
@@ -292,11 +256,7 @@ export function DividasTab({ client, onRefresh }: TabProps) {
 			)}
 
 			{debts.map(debt => (
-				<VendaEmAberto
-					key={debt.saleId}
-					debt={debt}
-					onPago={onRefresh}
-				/>
+				<VendaEmAberto key={debt.saleId}debt={debt}/>
 			))}
 		</>
 	);

@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import type { Client } from '../../../types/api/Client';
 import { ModalShell } from '../../../components/ModalShell';
 import { DadosTab } from './DadosTab';
 import { DividasTab } from './DividasTab';
 import { ComprasTab } from './ComprasTab';
+
 import { useClientForm, type ClientFormData } from './useClientForm';
+import type { Client } from '../../../api/clients/clients.types';
 
 export enum ActiveTab {
 	Details = 'details',
@@ -17,7 +18,6 @@ export type ModalMode = 'view' | 'edit';
 export interface TabProps {
 	client: Client;
 	/** Recarrega o cliente do servidor (após pagamento, por exemplo). */
-	onRefresh: () => void;
 }
 
 const TABS: { id: ActiveTab; label: string }[] = [
@@ -33,10 +33,9 @@ interface Props {
 	mode: ModalMode;
 	onClose: () => void;
 	onSave: (data: ClientFormData) => Promise<void>;
-	onRefresh: () => void;
 }
 
-export default function ClienteModal({ client, tab, mode, onClose, onSave, onRefresh }: Props) {
+export default function ClienteModal({ client, tab, mode, onClose, onSave }: Props) {
 	const [activeTab, setActiveTab] = useState<ActiveTab>(tab);
 	const [isEditing, setIsEditing] = useState(mode === 'edit' || !client);
 	const [isSaving, setIsSaving] = useState(false);
@@ -106,8 +105,8 @@ export default function ClienteModal({ client, tab, mode, onClose, onSave, onRef
 				<DadosTab form={form} readOnly={!isEditing} />
 			</div>
 
-			{client && activeTab === ActiveTab.Debts && <DividasTab client={client} onRefresh={onRefresh} />}
-			{client && activeTab === ActiveTab.Purchases && <ComprasTab client={client} onRefresh={onRefresh} />}
+			{client && activeTab === ActiveTab.Debts && <DividasTab client={client}/>}
+			{client && activeTab === ActiveTab.Purchases && <ComprasTab client={client}/>}
 		</ModalShell>
 	);
 }

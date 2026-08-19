@@ -1,19 +1,21 @@
 import React, { useEffect, useRef, useState } from 'react';
-import type { Product } from '../../../types/api/Product';
-import { productService } from '../../../services/productService';
+import type { Product } from '../../../api/products/products.types';
+import { useAddProduct, useUpdateProduct, useRemoveProductImage } from '../../../api/products/products.queries';
 import { ModalShell } from '../../../components/ModalShell';
 import { useFeedback } from '../../../components/Feedback/FeedbackProvider';
+
+export type ModalMode = 'view' | 'edit';
 
 interface Props {
 	/** null = novo produto */
 	product: Product | null;
+	mode?: ModalMode;
 	onClose: () => void;
-	onSaved: (product: Product) => void;
 }
 
 const EMPTY = { name: '', description: '', sku: '', sellPrice: '' };
 
-export function ProdutoFormModal({ product, onClose, onSaved }: Props) {
+export function ProdutoFormModal({ product, mode = 'edit', onClose }: Props) {
 	const [formData, setFormData] = useState(() =>
 		product
 			? {
@@ -25,15 +27,19 @@ export function ProdutoFormModal({ product, onClose, onSaved }: Props) {
 			: EMPTY
 	);
 
+	const [isEditing, setIsEditing] = useState(mode === 'edit' || !product);
 	const [isSaving, setIsSaving] = useState(false);
-	const [isRemovingImage, setIsRemovingImage] = useState(false);
-	const [imagemSalva, setImagemSalva] = useState(product?.imageUrl ?? null);
+	/** Intenção de remover: só é executada ao salvar. */
+	const [removerImagem, setRemoverImagem] = useState(false);
 
 	const fileInputRef = useRef<HTMLInputElement | null>(null);
 	const [imageFile, setImageFile] = useState<File | null>(null);
 	const [imagePreview, setImagePreview] = useState<string | null>(null);
 
-	const { sucesso, erro, confirmar } = useFeedback();
+	const { sucesso, erro } = useFeedback();
+	const addProduct = useAddProduct();
+	const updateProduct = useUpdateProduct();
+	const removeImage = useRemoveProductImage();
 
 	// Libera a URL do preview quando ela troca ou o modal fecha.
 	useEffect(() => {
@@ -48,33 +54,11 @@ export function ProdutoFormModal({ product, onClose, onSaved }: Props) {
 	const handleImageSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
 		const file = e.target.files?.[0];
 		if (!file) return;
+		// Escolher uma foto nova cancela a remoção pendente.
+		setRemoverImagem(false);
 		setImageFile(file);
 		setImagePreview(URL.createObjectURL(file));
 	};
-
-	async function handleRemoveImage() {
-		if (!product) return;
-
-		const ok = await confirmar({
-			title: 'Remover foto',
-			message: <>Remover a foto de <strong>{product.name}</strong>?</>,
-			confirmLabel: 'Remover foto',
-			danger: true,
-		});
-		if (!ok) return;
-
-		setIsRemovingImage(true);
-		try {
-			const atualizado = await productService.removeImage(product.id);
-			setImagemSalva(null);
-			onSaved(atualizado);
-			sucesso('Foto removida.');
-		} catch (err: any) {
-			erro(err?.message || 'Não foi possível remover a foto.');
-		} finally {
-			setIsRemovingImage(false);
-		}
-	}
 
 	async function handleSubmit(e: React.FormEvent) {
 		e.preventDefault();
@@ -88,11 +72,17 @@ export function ProdutoFormModal({ product, onClose, onSaved }: Props) {
 				imageFile,
 			};
 
-			const salvo = product
-				? await productService.updateProduct(product.id, payload)
-				: await productService.addProduct(payload);
+			if (product) {
+				await updateProduct.mutateAsync({ id: product.id, data: payload });
+			} else {
+				await addProduct.mutateAsync(payload);
+			}
 
-			onSaved(salvo);
+			// O PUT não mexe na imagem quando nenhum arquivo é enviado;
+			// a remoção é um endpoint próprio, chamado só agora.
+			if (product && removerImagem && !imageFile) {
+				await removeImage.mutateAsync(product.id);
+			}
 			sucesso(product ? 'Produto atualizado.' : 'Produto cadastrado.');
 			onClose();
 		} catch (err: any) {
@@ -102,28 +92,37 @@ export function ProdutoFormModal({ product, onClose, onSaved }: Props) {
 		}
 	}
 
-	// Preview local tem prioridade sobre a foto já salva.
-	const fotoExibida = imagePreview ?? imagemSalva;
+	// Preview local tem prioridade; remoção pendente esconde a foto atual.
+	const fotoSalva = removerImagem ? null : (product?.imageUrl ?? null);
+	const fotoExibida = imagePreview ?? fotoSalva;
+	const ro = { readOnly: !isEditing, className: 'form-control' };
 
 	return (
 		<ModalShell
-			title={product ? 'Editar produto' : 'Novo produto'}
+			title={product ? product.name : 'Novo produto'}
 			onClose={onClose}
-			onSubmit={handleSubmit}
-			footer={
+			onSubmit={isEditing ? handleSubmit : undefined}
+			footer={isEditing ? (
 				<>
 					<button type="button" className="btn btn-secondary" onClick={onClose}>Cancelar</button>
-					<button type="submit" className="btn btn-primary" disabled={isSaving || isRemovingImage}>
+					<button type="submit" className="btn btn-primary" disabled={isSaving}>
 						{isSaving ? 'Salvando…' : 'Salvar'}
 					</button>
 				</>
-			}
+			) : (
+				<>
+					<button type="button" className="btn btn-secondary" onClick={onClose}>Fechar</button>
+					<button type="button" className="btn btn-warning" onClick={() => setIsEditing(true)}>
+						Editar
+					</button>
+				</>
+			)}
 		>
 			<div className="mb-4 text-center">
 				<div
 					className="produto-foto-preview mx-auto mb-2"
-					onClick={() => fileInputRef.current?.click()}
-					role="button"
+					onClick={isEditing ? () => fileInputRef.current?.click() : undefined}
+					role={isEditing ? 'button' : undefined}
 				>
 					{fotoExibida
 						? <img src={fotoExibida} alt="Prévia do produto" />
@@ -140,32 +139,49 @@ export function ProdutoFormModal({ product, onClose, onSaved }: Props) {
 				/>
 
 				<div className="d-flex justify-content-center gap-2">
-					<button
-						type="button"
-						className="btn btn-sm btn-outline-primary"
-						onClick={() => fileInputRef.current?.click()}
-					>
-						{fotoExibida ? 'Trocar foto' : 'Adicionar foto'}
-					</button>
-
-					{imagemSalva && !imageFile && (
+					{isEditing && (
 						<button
 							type="button"
-							className="btn btn-sm btn-outline-danger"
-							disabled={isRemovingImage}
-							onClick={handleRemoveImage}
+							className="btn btn-sm btn-outline-primary"
+							onClick={() => fileInputRef.current?.click()}
 						>
-							{isRemovingImage ? 'Removendo…' : 'Remover foto'}
+							{fotoExibida ? 'Trocar foto' : 'Adicionar foto'}
 						</button>
 					)}
+
+					{isEditing && product?.imageUrl && !imageFile && (
+						removerImagem ? (
+							<button
+								type="button"
+								className="btn btn-sm btn-outline-secondary"
+								onClick={() => setRemoverImagem(false)}
+							>
+								Desfazer remoção
+							</button>
+						) : (
+							<button
+								type="button"
+								className="btn btn-sm btn-outline-danger"
+								onClick={() => setRemoverImagem(true)}
+							>
+								Remover foto
+							</button>
+						)
+					)}
 				</div>
+
+				{removerImagem && !imageFile && (
+					<small className="text-danger d-block mt-2">
+						A foto será removida ao salvar.
+					</small>
+				)}
 			</div>
 
 			<div className="row g-3">
 				<div className="col-md-8">
 					<label className="form-label">Nome</label>
 					<input
-						className="form-control"
+						{...ro}
 						name="name"
 						value={formData.name}
 						onChange={handleInputChange}
@@ -175,7 +191,7 @@ export function ProdutoFormModal({ product, onClose, onSaved }: Props) {
 				<div className="col-md-4">
 					<label className="form-label">SKU</label>
 					<input
-						className="form-control"
+						{...ro}
 						name="sku"
 						value={formData.sku}
 						onChange={handleInputChange}
@@ -185,27 +201,23 @@ export function ProdutoFormModal({ product, onClose, onSaved }: Props) {
 				<div className="col-12">
 					<label className="form-label">Descrição</label>
 					<input
-						className="form-control"
+						{...ro}
 						name="description"
 						value={formData.description}
 						onChange={handleInputChange}
 					/>
 				</div>
 				<div className="col-md-6">
-					<label className="form-label">Preço de venda</label>
-					<div className="input-group">
-						<span className="input-group-text">R$</span>
-						<input
-							type="number"
-							step="0.01"
-							inputMode="decimal"
-							className="form-control"
-							name="sellPrice"
-							value={formData.sellPrice}
-							onChange={handleInputChange}
-							required
-						/>
-					</div>
+					<label className="form-label">Preço de venda (R$)</label>
+					<input
+						type="number"
+						step="0.01"
+						className="form-control"
+						name="sellPrice"
+						value={formData.sellPrice}
+						onChange={handleInputChange}
+						required
+					/>
 				</div>
 				<div className="col-md-6">
 					<label className="form-label">Estoque atual</label>

@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from './contexts/AuthContext';
 import { PrivateRoute } from './routes/PrivateRoute';
 import { Login } from './pages/Login';
@@ -9,38 +10,55 @@ import { Clientes } from './pages/Clientes';
 import { Entradas } from './pages/Entradas';
 import { Vendas } from './pages/Vendas';
 import { FeedbackProvider } from './components/Feedback/FeedbackProvider';
+import { RouteErrorBoundary } from './components/RouteErrorBoundary';
 
-// Componente provisório (Mock) — só falta implementar essa tela ainda
-const Estoque = () => <h2>Controle de Estoque</h2>;
 
+// Debug
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+
+
+
+const queryClient = new QueryClient({
+	defaultOptions: {
+		queries: {
+			staleTime: 1000 * 60,
+			retry: 1,
+			refetchOnWindowFocus: false,
+		},
+	},
+});
 
 function App() {
-  return (
+	return (
+		<QueryClientProvider client={queryClient}>
+			<FeedbackProvider>
+				<AuthProvider>
+					<BrowserRouter>
+						{/* Rede de segurança: pega o que escapar do boundary do Layout. */}
+						<RouteErrorBoundary>
+							<Routes>
+								{/* Rota Pública */}
+								<Route path="/login" element={<Login />} />
 
-    <FeedbackProvider>
-      <AuthProvider>
-        <BrowserRouter>
-          <Routes>
-            {/* Rota Pública */}
-            <Route path="/login" element={<Login />} />
-
-            {/* Rotas Protegidas (Exigem Login) */}
-            <Route element={<PrivateRoute />}>
-              {/* O Layout contém a Navbar. Tudo aqui dentro cai no <Outlet /> do Layout */}
-              <Route element={<Layout />}>
-                <Route path="/" element={<Dashboard />} />
-                <Route path="/vendas" element={<Vendas />} />
-                <Route path="/entradas" element={<Entradas />} />
-                <Route path="/estoque" element={<Estoque />} />
-                <Route path="/produtos" element={<Produtos />} />
-                <Route path="/clientes" element={<Clientes />} />
-              </Route>
-            </Route>
-          </Routes>
-        </BrowserRouter>
-      </AuthProvider>
-    </FeedbackProvider>
-  );
+								{/* Rotas Protegidas (Exigem Login) */}
+								<Route element={<PrivateRoute />}>
+									{/* O Layout contém a Navbar. Tudo aqui dentro cai no <Outlet /> do Layout */}
+									<Route element={<Layout />}>
+										<Route path="/" element={<Dashboard />} />
+										<Route path="/vendas" element={<Vendas />} />
+										<Route path="/entradas" element={<Entradas />} />
+										<Route path="/produtos" element={<Produtos />} />
+										<Route path="/clientes" element={<Clientes />} />
+									</Route>
+								</Route>
+							</Routes>
+						</RouteErrorBoundary>
+					</BrowserRouter>
+				</AuthProvider>
+			</FeedbackProvider>
+			<ReactQueryDevtools initialIsOpen={false} />
+		</QueryClientProvider>
+	);
 }
 
 export default App;

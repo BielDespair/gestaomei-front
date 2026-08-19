@@ -1,284 +1,156 @@
+import { useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { stockEntriesQuery, useDeleteStockEntry } from '../../api/stock/stock.queries';
+import { productsQuery } from '../../api/products/products.queries';
+import { useFeedback } from '../../components/Feedback/FeedbackProvider';
+import { formatMoney, formatDate } from '../../utils/format';
+import type { StockEntryList } from '../../api/stock/stock.types';
+import { StockEntryFormModal, type ModalMode } from './modal/StockEntryFormModal';
 import '../../styles/shared-tables.css';
 
-import React, { useEffect, useState } from 'react';
-import { entradaService, type Entrada } from '../../services/entradaService';
-import { productService } from '../../services/productService';
-import type { Product } from '../../types/api/Product';
-
 export function Entradas() {
-  const [entradas, setEntradas] = useState<Entrada[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
+	const { data: entries, isPending, isError } = useQuery(stockEntriesQuery());
+	const { data: products } = useQuery(productsQuery());
+	const deleteEntry = useDeleteStockEntry();
+	const [deletingId, setDeletingId] = useState<number | null>(null);
 
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingEntrada, setEditingEntrada] = useState<Entrada | null>(null);
-  const [formData, setFormData] = useState({
-    date: new Date().toISOString().split('T')[0],
-    productId: '',
-    quantity: '',
-    unitCost: '',
-  });
+	// null = fechado | { entryId: null } = nova | { entryId } = ver/editar
+	const [modal, setModal] = useState<{ entryId: number | null; mode: ModalMode } | null>(null);
 
-  useEffect(() => { loadData(); }, []);
+	const { sucesso, erro, confirmar } = useFeedback();
 
-  async function loadData() {
-    setIsLoading(true);
-    try {
-      const [entradasData, productsData] = await Promise.all([
-        entradaService.getEntradas(),
-        productService.getProducts(),
-      ]);
-      setEntradas(entradasData);
-      setProducts(productsData);
-    } catch (error) {
-      console.error(error);
-      setErrorMessage('Não foi possível carregar o histórico de entradas.');
-    } finally {
-      setIsLoading(false);
-    }
-  }
+	// Mais recente primeiro; desempata pelo id, que é crescente.
+	const ordenadas = useMemo(
+		() => [...(entries ?? [])].sort((a, b) => b.purchaseDate.localeCompare(a.purchaseDate) || b.id - a.id),
+		[entries]
+	);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
+	async function handleDelete(entry: StockEntryList) {
+		const ok = await confirmar({
+			title: 'Excluir entrada',
+			confirmLabel: 'Excluir entrada',
+			danger: true,
+			message: (
+				<>
+					<p>
+						Apagar a entrada de {formatDate(entry.purchaseDate)} com{' '}
+						<strong>{entry.itemCount} {entry.itemCount === 1 ? 'item' : 'itens'}</strong>?
+					</p>
+					<div className="alert alert-warning mb-0">
+						Os lotes desta nota saem do estoque e o custo das vendas que os consumiram
+						será recalculado.
+					</div>
+				</>
+			),
+		});
+		if (!ok) return;
 
-  const handleNewClick = () => {
-    setEditingEntrada(null);
-    setFormData({
-      date: new Date().toISOString().split('T')[0],
-      productId: '', quantity: '', unitCost: '',
-    });
-    setErrorMessage('');
-    setIsModalOpen(true);
-  };
+		setDeletingId(entry.id);
+		try {
+			await deleteEntry.mutateAsync(entry.id);
+			sucesso('Entrada excluída.');
+		} catch (err: any) {
+			erro(err?.message || 'Não foi possível apagar essa entrada.');
+		} finally {
+			setDeletingId(null);
+		}
+	}
 
-  const handleEditClick = (entrada: Entrada) => {
-    setEditingEntrada(entrada);
-    setFormData({
-      date: entrada.date,
-      productId: entrada.productId.toString(),
-      quantity: entrada.quantity.toString(),
-      unitCost: entrada.unitCost.toString(),
-    });
-    setErrorMessage('');
-    setIsModalOpen(true);
-  };
+	return (
+		<div>
+			<div className="page-header">
+				<h2 className="page-title">Histórico de entradas</h2>
+				<button className="btn btn-primary" onClick={() => setModal({ entryId: null, mode: 'edit' })}>
+					+ Registrar entrada
+				</button>
+			</div>
 
-  const handleDeleteClick = async (entrada: Entrada) => {
-    if (!entrada.podeExcluir) return;
-    const confirmado = window.confirm(
-      `Apagar a entrada de ${entrada.quantity}un de "${entrada.productName}"? Essa ação não pode ser desfeita.`
-    );
-    if (!confirmado) return;
+			{isError && (
+				<div className="alert alert-danger">Não foi possível carregar o histórico de entradas.</div>
+			)}
 
-    try {
-      await entradaService.apagar(entrada.id);
-      setEntradas(prev => prev.filter(e => e.id !== entrada.id));
-    } catch (error: any) {
-      setErrorMessage(error?.message || 'Não foi possível apagar essa entrada.');
-    }
-  };
+			{isPending ? <p>Carregando histórico…</p> : (
+				<div className="table-responsive">
+					<table className="table table-striped table-hover">
+						<thead>
+							<tr>
+								<th>Data</th>
+								<th>Observações</th>
+								<th>Itens</th>
+								<th className="text-end">Qtd. total</th>
+								<th className="text-end">Custo total</th>
+								<th>Registrado por</th>
+								<th className="text-end">Ações</th>
+							</tr>
+						</thead>
+						<tbody>
+							{ordenadas.map(entry => (
+								<tr key={entry.id}>
+									<td>
+										<strong>{formatDate(entry.purchaseDate)}</strong>
+										<div className="text-muted small">{entry.id}</div>
+									</td>
+									<td style={{ maxWidth: '260px' }}>
+										<small className="text-secondary">{entry.notes || '—'}</small>
+									</td>
+									<td>
+										{entry.itemCount} {entry.itemCount === 1 ? 'produto' : 'produtos'}
+									</td>
+									<td className="text-end">{entry.totalQuantity} un</td>
+									<td className="text-end text-danger fw-medium">
+										{formatMoney(entry.totalCost)}
+									</td>
+									<td><small className="text-muted">{entry.userName}</small></td>
+									<td>
+										<div className="d-flex gap-1 justify-content-end">
+											<button
+												type="button"
+												className="btn btn-sm btn-secondary"
+												title="Ver entrada"
+												onClick={() => setModal({ entryId: entry.id, mode: 'view' })}
+											>
+												<i className="bi bi-eye" aria-hidden="true" />
+												<span className="visually-hidden">Ver entrada #{entry.id}</span>
+											</button>
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrorMessage('');
+											<button
+												type="button"
+												className="btn btn-sm btn-warning"
+												onClick={() => setModal({ entryId: entry.id, mode: 'edit' })}
+											>
+												Editar
+											</button>
+											<button
+												type="button"
+												className="btn btn-sm btn-outline-danger"
+												disabled={deletingId === entry.id}
+												onClick={() => handleDelete(entry)}
+											>
+												{deletingId === entry.id ? 'Apagando…' : 'Excluir'}
+											</button>
+										</div>
+									</td>
+								</tr>
+							))}
 
-    if (!editingEntrada && !formData.productId) {
-      return alert('Selecione um produto.');
-    }
+							{entries?.length === 0 && (
+								<tr>
+									<td colSpan={7} className="text-center py-4">Nenhuma entrada registrada.</td>
+								</tr>
+							)}
+						</tbody>
+					</table>
+				</div>
+			)}
 
-    setIsSaving(true);
-    try {
-      if (editingEntrada) {
-        const atualizada = await entradaService.atualizar(editingEntrada.id, {
-          date: formData.date,
-          quantity: parseInt(formData.quantity, 10),
-          unitCost: parseFloat(formData.unitCost),
-        });
-        setEntradas(prev => prev.map(e => (e.id === atualizada.id ? atualizada : e)));
-      } else {
-        const novaEntrada = await entradaService.registrar({
-          date: formData.date,
-          productId: parseInt(formData.productId, 10),
-          quantity: parseInt(formData.quantity, 10),
-          unitCost: parseFloat(formData.unitCost),
-        });
-        setEntradas(prev => [novaEntrada, ...prev]);
-      }
-      setIsModalOpen(false);
-    } catch (error: any) {
-      setErrorMessage(error?.message || 'Falha ao salvar a entrada.');
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const formatMoney = (value: number) => value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-  const formatDate = (dateString: string) => {
-    const [y, m, d] = dateString.split('-');
-    return `${d}/${m}/${y}`;
-  };
-
-  const currentTotal = (parseInt(formData.quantity) || 0) * (parseFloat(formData.unitCost) || 0);
-
-  return (
-    <div>
-      <div className="page-header">
-        <h2 className="page-title">Histórico de Entradas</h2>
-        <button className="btn btn-primary" onClick={handleNewClick}>+ Registrar Entrada</button>
-      </div>
-
-      {errorMessage && (
-        <div className="alert alert-danger d-flex justify-content-between align-items-center">
-          <span>{errorMessage}</span>
-          <button type="button" className="btn-close" onClick={() => setErrorMessage('')}></button>
-        </div>
-      )}
-
-      {isLoading ? <p>Carregando histórico...</p> : (
-        <div className="table-responsive">
-          <table className="table table-striped table-hover">
-            <thead>
-              <tr>
-                <th>Data</th>
-                <th>Produto</th>
-                <th>Qtd.</th>
-                <th>Custo Unitário</th>
-                <th>Custo Total</th>
-                <th>Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              {[...entradas].reverse().map(entrada => (
-                <tr key={entrada.id}>
-                  <td><strong>{formatDate(entrada.date)}</strong></td>
-                  <td>{entrada.productName}</td>
-                  <td>
-                    {entrada.quantity} un
-                    {entrada.quantidadeMinima > 0 && (
-                      <div className="text-muted small">{entrada.quantidadeMinima} já usadas</div>
-                    )}
-                  </td>
-                  <td style={{ color: '#6c757d' }}>{formatMoney(entrada.unitCost)}</td>
-                  <td style={{ color: '#dc3545', fontWeight: '500' }}>{formatMoney(entrada.totalCost)}</td>
-                  <td>
-                    <div className="action-buttons">
-                      <button className="btn btn-sm btn-warning" onClick={() => handleEditClick(entrada)}>Editar</button>
-                      {entrada.podeExcluir ? (
-                        <button className="btn btn-sm btn-danger" onClick={() => handleDeleteClick(entrada)}>Excluir</button>
-                      ) : (
-                        <span
-                          className="badge"
-                          style={{ backgroundColor: '#adb5bd', color: '#fff', cursor: 'help' }}
-                          title="Já tem produto vendido ou usado numa venda sob encomenda desse lote — não dá pra apagar, mas você ainda pode editar a quantidade (até o mínimo já usado) e o custo."
-                        >
-                          🔒 Não pode excluir
-                        </span>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-
-              {entradas.length === 0 && (
-                <tr>
-                  <td colSpan={6} style={{ textAlign: 'center', padding: '2rem' }}>Nenhuma entrada registrada.</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {isModalOpen && (
-        <>
-          <div className="modal fade show d-block" tabIndex={-1}>
-            <div className="modal-dialog">
-              <div className="modal-content">
-
-                <div className="modal-header">
-                  <h5 className="modal-title">
-                    {editingEntrada ? 'Editar Entrada' : 'Registrar Nova Entrada'}
-                  </h5>
-                  <button type="button" className="btn-close" onClick={() => setIsModalOpen(false)} />
-                </div>
-
-                <form onSubmit={handleSubmit}>
-                  <div className="modal-body">
-                    <div className="mb-3">
-                      <label className="form-label">Data da Compra</label>
-                      <input type="date" className="form-control" name="date" value={formData.date} onChange={handleInputChange} required />
-                    </div>
-
-                    <div className="mb-3">
-                      <label className="form-label">Produto</label>
-                      {editingEntrada ? (
-                        <input type="text" className="form-control" value={editingEntrada.productName} disabled />
-                      ) : (
-                        <select className="form-select" name="productId" value={formData.productId} onChange={handleInputChange} required>
-                          <option value="">-- Selecione o Produto --</option>
-                          {products.map(p => (
-                            <option key={p.id} value={p.id}>{p.name}</option>
-                          ))}
-                        </select>
-                      )}
-                      {editingEntrada && (
-                        <small className="text-muted d-block mt-1">
-                          Não dá pra trocar o produto de uma entrada já registrada. Selecionou o produto errado? Registre uma entrada nova com o produto certo.
-                        </small>
-                      )}
-                    </div>
-
-                    <div style={{ display: 'flex', gap: '1rem' }}>
-                      <div className="mb-3" style={{ flex: 1 }}>
-                        <label className="form-label">Quantidade Comprada</label>
-                        <input
-                          type="number"
-                          min={editingEntrada ? editingEntrada.quantidadeMinima || 1 : 1}
-                          className="form-control"
-                          name="quantity"
-                          value={formData.quantity}
-                          onChange={handleInputChange}
-                          required
-                        />
-                        {editingEntrada && editingEntrada.quantidadeMinima > 0 && (
-                          <small className="text-muted d-block mt-1">
-                            Mínimo {editingEntrada.quantidadeMinima} — já foi vendido/usado dessa quantidade.
-                          </small>
-                        )}
-                      </div>
-                      <div className="mb-3" style={{ flex: 1 }}>
-                        <label className="form-label">Custo Unitário (R$)</label>
-                        <input type="number" step="0.01" min="0.01" className="form-control" name="unitCost" value={formData.unitCost} onChange={handleInputChange} required />
-                      </div>
-                    </div>
-
-                    <div className="alert alert-info py-2" style={{ backgroundColor: '#cff4fc', borderColor: '#b6effb', color: '#055160', margin: 0 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span>Valor Total desta Nota:</span>
-                        <strong>{formatMoney(currentTotal)}</strong>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="modal-footer">
-                    <button type="button" className="btn btn-secondary" onClick={() => setIsModalOpen(false)}>Cancelar</button>
-                    <button type="submit" className="btn btn-success" disabled={isSaving}>
-                      {isSaving ? 'Salvando...' : (editingEntrada ? 'Salvar Alterações' : 'Confirmar Entrada')}
-                    </button>
-                  </div>
-                </form>
-
-              </div>
-            </div>
-          </div>
-
-          <div className="modal-backdrop fade show"></div>
-        </>
-      )}
-    </div>
-  );
+			{modal && (
+				<StockEntryFormModal
+					entryId={modal.entryId}
+					mode={modal.mode}
+					products={products ?? []}
+					onClose={() => setModal(null)}
+				/>
+			)}
+		</div>
+	);
 }

@@ -1,12 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { productService } from '../../services/productService';
-import { clientService } from '../../services/clientService';
-import { vendaService } from '../../services/vendaService';
+import { getProducts } from '../../api/products/products.api';
+import { vendaService } from '../../api/sales/sales.api';
 import { useFeedback } from '../../components/Feedback/FeedbackProvider';
 import { formatMoney } from '../../utils/format';
-import type { Product } from '../../types/api/Product';
-import type { VendaItem } from '../../services/vendaService';
-import type { ClientList } from '../../types/api/Client';
+import type { Product } from '../../api/products/products.types';
+import type { VendaItem } from '../../api/sales/sales.api';
+import type { ClientList } from '../../api/clients/clients.types';
 import { HistoricoVendas } from './Historico';
 import { ProdutoModal } from './modal/ProdutoModal';
 import { SelecionarClienteModal } from './modal/SelecionarClienteModal';
@@ -77,7 +76,7 @@ export function Vendas() {
 
 	async function loadData() {
 		const [prod, cli] = await Promise.allSettled([
-			productService.getProducts(),
+			getProducts(),
 			clientService.getClients(),
 		]);
 		if (prod.status === 'fulfilled') setProducts(prod.value);

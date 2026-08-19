@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import type { Product } from '../../../types/api/Product';
+import type { Product } from '../../../api/products/products.types';
 import { ModalShell } from '../../../components/ModalShell';
 import { useFeedback } from '../../../components/Feedback/FeedbackProvider';
 import { formatMoney } from '../../../utils/format';

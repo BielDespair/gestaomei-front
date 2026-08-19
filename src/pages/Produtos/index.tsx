@@ -1,42 +1,21 @@
-import { useEffect, useState } from 'react';
-import { productService } from '../../services/productService';
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { productsQuery, useDeleteProduct } from '../../api/products/products.queries';
 import { useFeedback } from '../../components/Feedback/FeedbackProvider';
 import { formatMoney } from '../../utils/format';
-import type { Product } from '../../types/api/Product';
-import { ProdutoFormModal } from './modal/ProdutoFormModal';
+import type { Product } from '../../api/products/products.types';
+import { ProdutoFormModal, type ModalMode } from './modal/ProdutoFormModal';
 import '../../styles/shared-tables.css';
 
 export function Produtos() {
-	const [products, setProducts] = useState<Product[]>([]);
-	const [isLoading, setIsLoading] = useState(true);
+	const { data: products, isPending, isError } = useQuery(productsQuery());
+	const deleteProduct = useDeleteProduct();
 	const [deletingId, setDeletingId] = useState<number | null>(null);
 
-	// null = fechado | { product: null } = novo | { product } = editando
-	const [modal, setModal] = useState<{ product: Product | null } | null>(null);
+	// null = fechado | { product: null } = novo | { product } = ver/editar
+	const [modal, setModal] = useState<{ product: Product | null; mode: ModalMode } | null>(null);
 
 	const { sucesso, erro, confirmar } = useFeedback();
-
-	useEffect(() => { loadProducts(); }, []);
-
-	async function loadProducts() {
-		setIsLoading(true);
-		try {
-			setProducts(await productService.getProducts());
-		} catch {
-			erro('Não foi possível carregar os produtos.');
-		} finally {
-			setIsLoading(false);
-		}
-	}
-
-	/** Insere ou substitui na lista sem refetch. */
-	function upsert(salvo: Product) {
-		setProducts(prev =>
-			prev.some(p => p.id === salvo.id)
-				? prev.map(p => (p.id === salvo.id ? salvo : p))
-				: [...prev, salvo]
-		);
-	}
 
 	async function handleDelete(product: Product) {
 		const ok = await confirmar({
@@ -56,8 +35,7 @@ export function Produtos() {
 
 		setDeletingId(product.id);
 		try {
-			await productService.deleteProduct(product.id);
-			setProducts(prev => prev.filter(p => p.id !== product.id));
+			await deleteProduct.mutateAsync(product.id);
 			sucesso('Produto excluído.');
 		} catch (err: any) {
 			erro(err?.message || 'Não foi possível apagar esse produto.');
@@ -76,12 +54,16 @@ export function Produtos() {
 		<div>
 			<div className="page-header">
 				<h2 className="page-title">Produtos</h2>
-				<button className="btn btn-primary" onClick={() => setModal({ product: null })}>
+				<button className="btn btn-primary" onClick={() => setModal({ product: null, mode: 'edit' })}>
 					+ Novo produto
 				</button>
 			</div>
 
-			{isLoading ? <p>Carregando…</p> : (
+			{isError && (
+				<div className="alert alert-danger">Não foi possível carregar os produtos.</div>
+			)}
+
+			{isPending ? <p>Carregando…</p> : (
 				<div className="table-responsive">
 					<table className="table table-striped table-hover">
 						<thead>
@@ -95,17 +77,12 @@ export function Produtos() {
 							</tr>
 						</thead>
 						<tbody>
-							{products.map(product => (
+							{products?.map(product => (
 								<tr key={product.id} className={linhaClasse(product)}>
 									<td>
-										<img
-											src={product.imageUrl || "/favicon.svg"}
-											alt={product.name}
-											className="produto-thumb"
-											onError={(e) => {
-												e.currentTarget.src = "/favicon.svg";
-											}}
-										/>
+										{product.imageUrl
+											? <img src={product.imageUrl} alt={product.name} className="produto-thumb" />
+											: <div className="produto-thumb produto-thumb-placeholder">☕</div>}
 									</td>
 									<td><strong>{product.sku}</strong></td>
 									<td>{product.name}</td>
@@ -125,8 +102,18 @@ export function Produtos() {
 										<div className="d-flex gap-1 justify-content-end">
 											<button
 												type="button"
+												className="btn btn-sm btn-secondary"
+												title="Ver produto"
+												onClick={() => setModal({ product, mode: 'view' })}
+											>
+												<i className="bi bi-eye" aria-hidden="true" />
+												<span className="visually-hidden">Ver {product.name}</span>
+											</button>
+
+											<button
+												type="button"
 												className="btn btn-sm btn-warning"
-												onClick={() => setModal({ product })}
+												onClick={() => setModal({ product, mode: 'edit' })}
 											>
 												Editar
 											</button>
@@ -143,7 +130,7 @@ export function Produtos() {
 								</tr>
 							))}
 
-							{products.length === 0 && (
+							{products?.length === 0 && (
 								<tr>
 									<td colSpan={6} className="text-center py-4">Nenhum produto cadastrado.</td>
 								</tr>
@@ -156,8 +143,8 @@ export function Produtos() {
 			{modal && (
 				<ProdutoFormModal
 					product={modal.product}
+					mode={modal.mode}
 					onClose={() => setModal(null)}
-					onSaved={upsert}
 				/>
 			)}
 		</div>

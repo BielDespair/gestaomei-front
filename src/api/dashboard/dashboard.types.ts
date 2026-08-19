@@ -1,5 +1,3 @@
-import { apiFetch } from './api';
-
 export interface DashboardSummary {
   startDate: string;
   endDate: string;
@@ -101,45 +99,3 @@ export interface EstoquePorProduto {
 export type SummaryPreset =
   | 'today' | '7d' | '30d' | 'this_week' | 'last_week' | 'this_month' | 'last_month';
 export type SeriesPreset = '7d' | '30d' | '12m';
-
-export const dashboardService = {
-  getSummary: (preset: SummaryPreset, start?: string, end?: string): Promise<DashboardSummary> => {
-    const params = new URLSearchParams();
-    if (start && end) {
-      params.set('start', start);
-      params.set('end', end);
-    } else {
-      params.set('preset', preset);
-    }
-    return apiFetch(`/dashboard/summary?${params.toString()}`);
-  },
-
-  getLowStock: (threshold = 10): Promise<LowStockProduct[]> =>
-    apiFetch(`/dashboard/low-stock?threshold=${threshold}`),
-
-  getDevedores: (): Promise<Devedor[]> => apiFetch('/dashboard/devedores'),
-
-  getProfitSeries: (preset: SeriesPreset): Promise<ProfitPoint[]> =>
-    apiFetch(`/dashboard/profit-series?preset=${preset}`),
-
-  getEntregasPendentes: (): Promise<EntregaPendente[]> =>
-    apiFetch('/dashboard/entregas-pendentes'),
-
-  getTopClientes: (limit = 10): Promise<TopCliente[]> =>
-    apiFetch(`/dashboard/top-clientes?limit=${limit}`),
-
-  getTopProdutos: (limit = 10): Promise<TopProduto[]> =>
-    apiFetch(`/dashboard/top-produtos?limit=${limit}`),
-
-  getEstoqueValor: (): Promise<EstoqueValor> =>
-    apiFetch('/dashboard/estoque-valor'),
-
-  getAguardandoReposicao: (): Promise<AguardandoReposicao[]> =>
-    apiFetch('/dashboard/aguardando-reposicao'),
-
-  getFormasPagamento: (preset: SummaryPreset): Promise<FormaPagamento[]> =>
-    apiFetch(`/dashboard/formas-pagamento?preset=${preset}`),
-
-  getEstoquePorProduto: (): Promise<EstoquePorProduto[]> =>
-    apiFetch('/dashboard/estoque-por-produto'),
-};

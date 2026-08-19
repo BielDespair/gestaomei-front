@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
-import type { Client } from '../../../types/api/Client';
-import { cepService } from '../../../services/cepService';
+import type { Client } from '../../../api/clients/clients.types';
+import { useFetchCep } from '../../../api/cep/cep.queries';
 import { onlyDigits } from '../../../utils/format';
 import { toUF } from '../../../constants/estados';
 
@@ -10,13 +10,23 @@ type FormEl = HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
 type Mask = (v: string) => string;
 
 const EMPTY: ClientFormData = {
-	name: '', description: '', email: '', document: '', pix: '', phoneNumber: '',
-	cep: '', street: '', number: '', complement: '', district: '', city: '', state: '',
+	name: '',
+	description: '',
+	email: '',
+	document: '',
+	pix: '',
+	phoneNumber: '',
+	cep: '',
+	street: '',
+	number: '',
+	complement: '',
+ 	district: '',
+	city: 'Uberlândia',
+	state: 'MG',
 };
 
 export function useClientForm(client: Client | null) {
-	// Normaliza os campos mascarados: o state guarda só dígitos.
-	// Sem isso, dado legado com pontuação faz o form nascer "sujo".
+
 	const initial = useMemo<ClientFormData>(() => {
 		if (!client) return EMPTY;
 		return {
@@ -30,36 +40,26 @@ export function useClientForm(client: Client | null) {
 	}, [client]);
 
 	const [formData, setFormData] = useState<ClientFormData>(initial);
-	const [isFetchingCep, setIsFetchingCep] = useState(false);
+	const fetchCep = useFetchCep();
 
 	const isDirty = JSON.stringify(formData) !== JSON.stringify(initial);
 
 	const handleCepBlur = async (e: React.FocusEvent<HTMLInputElement>) => {
 		const cep = onlyDigits(e.target.value);
 		if (cep.length !== 8) return;
-		setIsFetchingCep(true);
-		try {
-			const data = await cepService.fetchCep(cep);
-			if (data) {
-				// nomes do ViaCEP -> nomes do type Client
-				setFormData(prev => ({
-					...prev,
-					street: data.logradouro,
-					district: data.bairro,
-					city: data.localidade,
-					state: toUF(data.uf) ?? prev.state,
-				}));
-			}
-		} finally {
-			setIsFetchingCep(false);
+		const data = await fetchCep.mutateAsync(cep);
+		if (data) {
+			// nomes do ViaCEP -> nomes do type Client
+			setFormData(prev => ({
+				...prev,
+				street: data.logradouro,
+				district: data.bairro,
+				city: data.localidade,
+				state: toUF(data.uf) ?? prev.state,
+			}));
 		}
 	};
-
-	/**
-	 * Espalhe num input: <input {...bind('city')} />
-	 * Com máscara: <input {...bind('cep', maskCep)} />
-	 * A máscara vale só para exibir — o state sempre guarda dígitos crus.
-	 */
+	
 	const bind = (name: keyof ClientFormData, mask?: Mask) => ({
 		name,
 		value: mask ? mask(formData[name] ?? '') : (formData[name] ?? ''),
@@ -69,7 +69,7 @@ export function useClientForm(client: Client | null) {
 		},
 	});
 
-	return { formData, bind, isDirty, isFetchingCep, handleCepBlur };
+	return { formData, bind, isDirty, isFetchingCep: fetchCep.isPending, handleCepBlur };
 }
 
 export type ClientFormBinding = ReturnType<typeof useClientForm>;

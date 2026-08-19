@@ -1,53 +1,29 @@
 import '../../styles/shared-tables.css';
 import '../../assets/bootstrap-icons/bootstrap-icons.css'
-import { useEffect, useState } from 'react';
-import type { ClientList } from '../../types/api/Client';
-import { clientService } from '../../services/clientService';
+
 import { formatMoney, formatPhone, formatDocument } from '../../utils/format';
 import { useClienteModal } from './modal/ClienteModalProvider';
+import { useQuery } from '@tanstack/react-query';
+import { clientsQuery } from '../../api/clients/clients.queries';
 
 export function Clientes() {
-	const [clients, setClients] = useState<ClientList[]>([]);
-	const [isLoading, setIsLoading] = useState(true);
-	const [errorMessage, setErrorMessage] = useState('');
+
+	const { data: clients, isPending, isError } = useQuery(clientsQuery());
 
 	const { abrirCliente, novoCliente, excluirCliente } = useClienteModal();
-
-	useEffect(() => { loadClients(); }, []);
-
-	async function loadClients() {
-		setIsLoading(true);
-		try {
-			const data = await clientService.getClients();
-			if (!Array.isArray(data)) throw new Error('Resposta inválida da API');
-			setClients(data);
-		} catch {
-			setErrorMessage('Não foi possível carregar os clientes.');
-		} finally {
-			setIsLoading(false);
-		}
-	}
-
-	// Toda abertura recarrega a lista se algo mudou.
-	const opts = { onChanged: loadClients };
 
 	return (
 		<div className="clientes-page">
 			<div className="page-header">
 				<h2 className="page-title">Cadastro de clientes</h2>
-				<button className="btn btn-primary" onClick={() => novoCliente(opts)}>
+				<button className="btn btn-primary" onClick={() => novoCliente()}>
 					+ Novo cliente
 				</button>
 			</div>
 
-			{errorMessage && (
-				<div className="alert alert-danger d-flex justify-content-between align-items-center">
-					<span>{errorMessage}</span>
-					<button type="button" className="btn-close" onClick={() => setErrorMessage('')} />
-				</div>
-			)}
+			{isError && (<div className="alert alert-danger"> Não foi possível carregar os clientes. </div>)}
 
-			{isLoading ? <p>Carregando clientes…</p> : (
+			{isPending  ? <p>Carregando clientes…</p> : (
 				<div className="table-responsive">
 					<table className="table table-striped table-hover">
 						<thead>
@@ -61,7 +37,7 @@ export function Clientes() {
 							</tr>
 						</thead>
 						<tbody>
-							{clients.map(client => (
+							{clients?.map(client => (
 								<tr key={client.id}>
 									<td>
 										<strong>{client.name}</strong>
@@ -90,7 +66,7 @@ export function Clientes() {
 												type="button"
 												className="btn btn-sm btn-secondary"
 												title="Ver cliente"
-												onClick={() => abrirCliente(client.id, opts)}
+												onClick={() => abrirCliente(client.id)}
 											>
 												<i className="bi bi-eye" aria-hidden="true" />
 												<span className="visually-hidden">Ver {client.name}</span>
@@ -99,7 +75,7 @@ export function Clientes() {
 											<button
 												type="button"
 												className="btn btn-sm btn-warning"
-												onClick={() => abrirCliente(client.id, { ...opts, mode: 'edit' })}
+												onClick={() => abrirCliente(client.id, { mode: 'edit' })}
 											>
 												Editar
 											</button>
@@ -107,7 +83,7 @@ export function Clientes() {
 											<button
 												type="button"
 												className="btn btn-sm btn-outline-danger"
-												onClick={() => excluirCliente(client, opts)}
+												onClick={() => excluirCliente(client)}
 											>
 												Excluir
 											</button>
@@ -116,7 +92,7 @@ export function Clientes() {
 								</tr>
 							))}
 
-							{clients.length === 0 && (
+							{clients?.length === 0 && (
 								<tr>
 									<td colSpan={6} className="text-center py-4">
 										Nenhum cliente cadastrado ainda.

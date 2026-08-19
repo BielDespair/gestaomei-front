@@ -1,16 +1,11 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useState } from 'react';
 import {
   ResponsiveContainer, LineChart, Line,
   XAxis, YAxis, CartesianGrid, Tooltip,
 } from 'recharts';
-import {
-  dashboardService,
-  type ProfitPoint,
-  type TopProduto,
-  type FormaPagamento,
-  type EstoquePorProduto,
-  type SeriesPreset,
-} from '../../services/dashboardService';
+import { useQuery } from '@tanstack/react-query';
+import { profitSeriesQuery, topProdutosQuery, formasPagamentoQuery, estoquePorProdutoQuery } from '../../api/dashboard/dashboard.queries';
+import type { SeriesPreset } from '../../api/dashboard/dashboard.types';
 
 const SERIES_PRESETS: { value: SeriesPreset; label: string }[] = [
   { value: '7d', label: '7 dias' },
@@ -35,55 +30,17 @@ const formatLabel = (label: string) => {
 
 export function Graficos() {
   const [seriesPreset, setSeriesPreset] = useState<SeriesPreset>('7d');
-  const [profitSeries, setProfitSeries] = useState<ProfitPoint[]>([]);
-  const [, setTopProdutos] = useState<TopProduto[]>([]);
-  const [, setFormasPagamento] = useState<FormaPagamento[]>([]);
-  const [, setEstoquePorProduto] = useState<EstoquePorProduto[]>([]);
-  const [isLoadingSeries, setIsLoadingSeries] = useState(true);
-  const [, setIsLoadingResto] = useState(true);
-  const [errorMessage, setErrorMessage] = useState('');
 
-  const loadSeries = useCallback(async (preset: SeriesPreset) => {
-    setIsLoadingSeries(true);
-    try {
-      setProfitSeries(await dashboardService.getProfitSeries(preset));
-    } catch {
-      setErrorMessage('Não foi possível carregar a evolução.');
-    } finally {
-      setIsLoadingSeries(false);
-    }
-  }, []);
-
-  useEffect(() => { loadSeries(seriesPreset); }, [seriesPreset, loadSeries]);
-
-  useEffect(() => {
-    async function loadResto() {
-      setIsLoadingResto(true);
-      try {
-        const [produtosData, pagamentoData, estoqueData] = await Promise.all([
-          dashboardService.getTopProdutos(8),
-          dashboardService.getFormasPagamento('this_month'),
-          dashboardService.getEstoquePorProduto(),
-        ]);
-        setTopProdutos(produtosData);
-        setFormasPagamento(pagamentoData);
-        setEstoquePorProduto(estoqueData);
-      } catch {
-        setErrorMessage('Não foi possível carregar os gráficos.');
-      } finally {
-        setIsLoadingResto(false);
-      }
-    }
-    loadResto();
-  }, []);
-
+  const { data: profitSeries = [], isPending: isLoadingSeries, isError: isErrorSeries } = useQuery(profitSeriesQuery(seriesPreset));
+  const { isError: isErrorResto } = useQuery(topProdutosQuery(8));
+  useQuery(formasPagamentoQuery('this_month'));
+  useQuery(estoquePorProdutoQuery());
 
   return (
     <div>
-      {errorMessage && (
+      {(isErrorSeries || isErrorResto) && (
         <div className="alert alert-danger d-flex justify-content-between align-items-center">
-          <span>{errorMessage}</span>
-          <button type="button" className="btn-close" onClick={() => setErrorMessage('')}></button>
+          <span>Não foi possível carregar os gráficos.</span>
         </div>
       )}
 

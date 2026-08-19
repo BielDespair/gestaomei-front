@@ -57,3 +57,6 @@ export interface RegisterPayment {
   amount: number;
   note?: string | null;
 }
+
+
+export type ClientInput = Omit<Client, 'id' | 'debts'>;

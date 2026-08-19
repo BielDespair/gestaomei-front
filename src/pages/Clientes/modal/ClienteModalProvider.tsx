@@ -1,18 +1,18 @@
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
-import type { ClientList } from '../../../types/api/Client';
-import { clientService } from '../../../services/clientService';
 import { useFeedback } from '../../../components/Feedback/FeedbackProvider';
 import { formatMoney } from '../../../utils/format';
-import { ActiveTab, type ModalMode } from './ClienteModal';
 import { ClienteModalContainer } from './ClienteModalContainer';
+import { useDeleteClient } from '../../../api/clients/clients.queries';
+
+import type { ClientList } from '../../../api/clients/clients.types';
+import { ActiveTab, type ModalMode } from './ClienteModal';
+import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
+
 
 type ClienteResumo = Pick<ClientList, 'id' | 'name' | 'totalDebt'>;
 
 export interface AbrirOptions {
 	tab?: ActiveTab;
 	mode?: ModalMode;
-	/** Chamado após salvar ou excluir — use para recarregar a lista da tela. */
-	onChanged?: () => void;
 }
 
 interface Ctx {
@@ -39,18 +39,18 @@ interface State {
 export function ClienteModalProvider({ children }: { children: ReactNode }) {
 	const [state, setState] = useState<State | null>(null);
 	const { confirmar, sucesso, erro } = useFeedback();
+	const deleteClient = useDeleteClient();
 
 	const abrirCliente = useCallback((clientId: number, opts: AbrirOptions = {}) => {
 		setState({
 			clientId,
 			tab: opts.tab ?? ActiveTab.Details,
 			mode: opts.mode ?? 'view',
-			onChanged: opts.onChanged,
 		});
 	}, []);
 
 	const novoCliente = useCallback((opts: AbrirOptions = {}) => {
-		setState({ clientId: null, tab: ActiveTab.Details, mode: 'edit', onChanged: opts.onChanged });
+		setState({ clientId: null, tab: ActiveTab.Details, mode: 'edit'});
 	}, []);
 
 	const excluirCliente = useCallback(async (client: ClienteResumo, opts: AbrirOptions = {}) => {
@@ -75,9 +75,8 @@ export function ClienteModalProvider({ children }: { children: ReactNode }) {
 		if (!ok) return;
 
 		try {
-			await clientService.deleteClient(client.id);
+			await deleteClient.mutateAsync(client.id);
 			sucesso('Cliente excluído.');
-			opts.onChanged?.();
 		} catch (err: any) {
 			erro(err?.message || 'Não foi possível excluir o cliente.');
 		}
@@ -96,9 +95,7 @@ export function ClienteModalProvider({ children }: { children: ReactNode }) {
 					clientId={state.clientId}
 					tab={state.tab}
 					mode={state.mode}
-					onClose={() => setState(null)}
-					onChanged={state.onChanged}
-				/>
+					onClose={() => setState(null)}/>
 			)}
 		</ClienteModalContext.Provider>
 	);

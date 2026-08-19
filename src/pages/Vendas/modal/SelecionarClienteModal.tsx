@@ -1,6 +1,5 @@
 import { useMemo, useState, type FormEvent } from 'react';
-import type { ClientList } from '../../../types/api/Client';
-import { clientService } from '../../../services/clientService';
+import type { ClientList } from '../../../api/clients/clients.types';
 import { ModalShell } from '../../../components/ModalShell';
 import { useFeedback } from '../../../components/Feedback/FeedbackProvider';
 import { formatDocument, formatPhone, maskDocument, maskPhone, onlyDigits } from '../../../utils/format';

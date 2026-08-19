@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { vendaService, type Venda } from '../../services/vendaService';
+import { vendaService, type Venda } from '../../api/sales/sales.api';
 import { formatMoney, formatDate } from '../../utils/format';
 
 type PeriodoPreset = 'hoje' | '7d' | '30d' | 'tudo';

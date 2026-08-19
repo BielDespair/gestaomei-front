@@ -1,18 +1,19 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  dashboardService,
-  type DashboardSummary,
-  type LowStockProduct,
-  type Devedor,
-  type EntregaPendente,
-  type TopCliente,
-  type TopProduto,
-  type EstoqueValor,
-  type AguardandoReposicao,
-  type SummaryPreset,
-} from '../../services/dashboardService';
-import { vendaService } from '../../services/vendaService';
+  devedoresQuery,
+  entregasPendentesQuery,
+  lowStockQuery,
+  aguardandoReposicaoQuery,
+  estoqueValorQuery,
+  topClientesQuery,
+  topProdutosQuery,
+  summaryQuery,
+  dashboardKeys,
+} from '../../api/dashboard/dashboard.queries';
+import type { SummaryPreset } from '../../api/dashboard/dashboard.types';
+import { useMarkAsDelivered } from '../../api/sales/sales.queries';
 import { Graficos } from './Graficos';
 import './styles.css';
 
@@ -52,101 +53,37 @@ function SecaoTitulo({ children }: { children: React.ReactNode }) {
 
 export function Dashboard() {
   const [aba, setAba] = useState<Aba>('pendencias');
-  const [errorMessage, setErrorMessage] = useState('');
-
-  // --- Pendências ---
-  const [devedores, setDevedores] = useState<Devedor[]>([]);
-  const [entregasPendentes, setEntregasPendentes] = useState<EntregaPendente[]>([]);
-  const [lowStockPreview, setLowStockPreview] = useState<LowStockProduct[]>([]);
-  const [aguardandoReposicao, setAguardandoReposicao] = useState<AguardandoReposicao[]>([]);
-  const [isLoadingPendencias, setIsLoadingPendencias] = useState(true);
+  const [summaryPreset, setSummaryPreset] = useState<SummaryPreset>('this_week');
   const [entregandoIds, setEntregandoIds] = useState<Set<number>>(new Set());
   const [devedorAberto, setDevedorAberto] = useState<number | null>(null);
+  const [errorMessage, setErrorMessage] = useState('');
+
+  const qc = useQueryClient();
+  const markAsDelivered = useMarkAsDelivered();
+
+  // --- Pendências ---
+  const { data: devedores, isPending: isPendingDevedores, isError: isErrorDevedores } = useQuery(devedoresQuery());
+  const { data: entregasPendentes, isPending: isPendingEntregas, isError: isErrorEntregas } = useQuery(entregasPendentesQuery());
+  const { data: lowStockData, isPending: isPendingLowStock, isError: isErrorLowStock } = useQuery(lowStockQuery(10));
+  const { data: aguardandoReposicao, isPending: isPendingAguardando, isError: isErrorAguardando } = useQuery(aguardandoReposicaoQuery());
+
+  const isLoadingPendencias = isPendingDevedores || isPendingEntregas || isPendingLowStock || isPendingAguardando;
+  const isErrorPendencias = isErrorDevedores || isErrorEntregas || isErrorLowStock || isErrorAguardando;
+  const lowStockPreview = (lowStockData ?? []).slice(0, 5);
 
   // --- Meu Negócio ---
-  const [summary, setSummary] = useState<DashboardSummary | null>(null);
-  const [topClientes, setTopClientes] = useState<TopCliente[]>([]);
-  const [topProdutos, setTopProdutos] = useState<TopProduto[]>([]);
-  const [estoqueValor, setEstoqueValor] = useState<EstoqueValor | null>(null);
-  const [summaryPreset, setSummaryPreset] = useState<SummaryPreset>('this_week');
-  const [isLoadingEstoqueAgora, setIsLoadingEstoqueAgora] = useState(true);
-  const [isLoadingResultado, setIsLoadingResultado] = useState(true);
-  const [isLoadingRankings, setIsLoadingRankings] = useState(true);
-
-  const loadPendencias = useCallback(async () => {
-    setIsLoadingPendencias(true);
-    try {
-      const [devedoresData, entregasData, lowStockData, aguardandoData] = await Promise.all([
-        dashboardService.getDevedores(),
-        dashboardService.getEntregasPendentes(),
-        dashboardService.getLowStock(10),
-        dashboardService.getAguardandoReposicao(),
-      ]);
-      setDevedores(devedoresData);
-      setEntregasPendentes(entregasData);
-      setLowStockPreview(lowStockData.slice(0, 5));
-      setAguardandoReposicao(aguardandoData);
-    } catch {
-      setErrorMessage('Não foi possível carregar as pendências.');
-    } finally {
-      setIsLoadingPendencias(false);
-    }
-  }, []);
-
-  const loadEstoqueAgora = useCallback(async () => {
-    setIsLoadingEstoqueAgora(true);
-    try {
-      setEstoqueValor(await dashboardService.getEstoqueValor());
-    } catch {
-      setErrorMessage('Não foi possível carregar o valor em estoque.');
-    } finally {
-      setIsLoadingEstoqueAgora(false);
-    }
-  }, []);
-
-  const loadRankings = useCallback(async () => {
-    setIsLoadingRankings(true);
-    try {
-      const [clientesData, produtosData] = await Promise.all([
-        dashboardService.getTopClientes(10),
-        dashboardService.getTopProdutos(10),
-      ]);
-      setTopClientes(clientesData);
-      setTopProdutos(produtosData);
-    } catch {
-      setErrorMessage('Não foi possível carregar os rankings.');
-    } finally {
-      setIsLoadingRankings(false);
-    }
-  }, []);
-
-  const loadResultado = useCallback(async (preset: SummaryPreset) => {
-    setIsLoadingResultado(true);
-    try {
-      setSummary(await dashboardService.getSummary(preset));
-    } catch {
-      setErrorMessage('Não foi possível carregar o resultado do período.');
-    } finally {
-      setIsLoadingResultado(false);
-    }
-  }, []);
-
-  useEffect(() => { loadPendencias(); }, [loadPendencias]);
-
-  useEffect(() => {
-    if (aba === 'negocio') {
-      loadEstoqueAgora();
-      loadRankings();
-    }
-  }, [aba, loadEstoqueAgora, loadRankings]);
-
-  useEffect(() => { if (aba === 'negocio') loadResultado(summaryPreset); }, [aba, summaryPreset, loadResultado]);
+  const negocioAtivo = aba === 'negocio';
+  const { data: estoqueValor, isPending: isLoadingEstoqueAgora } = useQuery({ ...estoqueValorQuery(), enabled: negocioAtivo });
+  const { data: topClientes = [], isPending: isPendingTopClientes } = useQuery({ ...topClientesQuery(10), enabled: negocioAtivo });
+  const { data: topProdutos = [], isPending: isPendingTopProdutos } = useQuery({ ...topProdutosQuery(10), enabled: negocioAtivo });
+  const { data: summary, isPending: isLoadingResultado } = useQuery({ ...summaryQuery(summaryPreset), enabled: negocioAtivo });
+  const isLoadingRankings = isPendingTopClientes || isPendingTopProdutos;
 
   const handleMarcarEntregue = async (id: number) => {
     setEntregandoIds(prev => new Set(prev).add(id));
     try {
-      await vendaService.marcarComoEntregue(id);
-      setEntregasPendentes(prev => prev.filter(e => e.id !== id));
+      await markAsDelivered.mutateAsync(id);
+      qc.invalidateQueries({ queryKey: dashboardKeys.entregasPendentes() });
     } catch {
       setErrorMessage('Não foi possível marcar essa entrega como recebida. Tente de novo.');
     } finally {
@@ -158,17 +95,17 @@ export function Dashboard() {
     }
   };
 
-  const totalPendente = devedores.reduce((acc, d) => acc + d.totalDebt, 0);
-  const totalPendenciasBadge = devedores.length + entregasPendentes.length + aguardandoReposicao.length;
+  const totalPendente = (devedores ?? []).reduce((acc, d) => acc + d.totalDebt, 0);
+  const totalPendenciasBadge = (devedores?.length ?? 0) + (entregasPendentes?.length ?? 0) + (aguardandoReposicao?.length ?? 0);
 
   return (
     <div className="container-fluid px-3 px-lg-4 py-3 py-lg-4 dashboard-tela">
       <h2 className="fw-bold mb-3">Visão Geral</h2>
 
-      {errorMessage && (
+      {(errorMessage || isErrorPendencias) && (
         <div className="alert alert-danger d-flex justify-content-between align-items-center">
-          <span>{errorMessage}</span>
-          <button type="button" className="btn-close" onClick={() => setErrorMessage('')}></button>
+          <span>{errorMessage || 'Não foi possível carregar as pendências.'}</span>
+          {errorMessage && <button type="button" className="btn-close" onClick={() => setErrorMessage('')}></button>}
         </div>
       )}
 
@@ -211,11 +148,11 @@ export function Dashboard() {
               <div className="card-body p-0">
                 {isLoadingPendencias ? (
                   <div className="text-center text-muted py-5">Carregando...</div>
-                ) : devedores.length === 0 ? (
+                ) : devedores?.length === 0 ? (
                   <div className="text-center text-muted py-5 fs-5">Ninguém devendo agora.</div>
                 ) : (
                   <ul className="list-group list-group-flush">
-                    {devedores.map(d => (
+                    {devedores?.map(d => (
                       <li key={d.id} className="list-group-item p-3">
                         <div
                           className="d-flex justify-content-between align-items-start gap-2"
@@ -260,11 +197,11 @@ export function Dashboard() {
               <div className="card-body p-0">
                 {isLoadingPendencias ? (
                   <div className="text-center text-muted py-5">Carregando...</div>
-                ) : entregasPendentes.length === 0 ? (
+                ) : entregasPendentes?.length === 0 ? (
                   <div className="text-center text-muted py-5 fs-5">Tudo entregue.</div>
                 ) : (
                   <ul className="list-group list-group-flush">
-                    {entregasPendentes.map(e => (
+                    {entregasPendentes?.map(e => (
                       <li key={e.id} className="list-group-item p-3">
                         <div className="fw-bold fs-5">{e.clientName}</div>
                         <div className="mt-1"><TelefoneLink phone={e.clientPhone} /></div>
@@ -292,18 +229,18 @@ export function Dashboard() {
             <div className="card shadow-sm">
               <div className="card-header bg-white d-flex justify-content-between align-items-center">
                 <span className="fw-semibold fs-5">Aguardando reposição</span>
-                {aguardandoReposicao.length > 0 && (
+                {(aguardandoReposicao?.length ?? 0) > 0 && (
                   <Link to="/entradas" className="btn btn-sm btn-warning">Registrar Entrada</Link>
                 )}
               </div>
               <div className="card-body p-0">
                 {isLoadingPendencias ? (
                   <div className="text-center text-muted py-4">Carregando...</div>
-                ) : aguardandoReposicao.length === 0 ? (
+                ) : aguardandoReposicao?.length === 0 ? (
                   <div className="text-center text-muted py-4">Nenhuma venda sob encomenda esperando reposição.</div>
                 ) : (
                   <ul className="list-group list-group-flush">
-                    {aguardandoReposicao.map(item => (
+                    {aguardandoReposicao?.map(item => (
                       <li key={item.productId} className="list-group-item d-flex justify-content-between align-items-center p-3">
                         <div>
                           <div className="fw-bold">{item.productName}</div>

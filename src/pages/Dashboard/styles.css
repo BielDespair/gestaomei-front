@@ -19,8 +19,8 @@
 }
 
 .melhor-cliente-card {
-  background: linear-gradient(135deg, #fff8e1 0%, #ffffff 100%);
-  border: 2px solid #ffc107;
+  background: linear-gradient(135deg, rgba(213, 153, 63, 0.14) 0%, var(--superficie) 100%);
+  border: 2px solid var(--cafe-dourado);
 }
 
 .ranking-badge {
@@ -34,5 +34,5 @@
 }
 
 .border-danger-subtle {
-  border-color: #f5c2c7 !important;
+  border-color: rgba(140, 47, 32, 0.2) !important;
 }

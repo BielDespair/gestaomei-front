@@ -1,23 +1,23 @@
-import { useMemo, useState, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import type { ClientList } from '../../../api/clients/clients.types';
+import { clientsQuery, useAddClient } from '../../../api/clients/clients.queries';
+import { useDebounce } from '../../../hooks/useDebounce';
+import { LoadingState } from '../../../components/LoadingState';
 import { ModalShell } from '../../../components/ModalShell';
 import { useFeedback } from '../../../components/Feedback/FeedbackProvider';
 import { formatDocument, formatPhone, maskDocument, maskPhone, onlyDigits } from '../../../utils/format';
 
 interface Props {
-	clients: ClientList[];
 	onClose: () => void;
 	onSelect: (client: ClientList) => void;
-	/** Avisa a tela para recarregar a lista após cadastro rápido. */
-	onCreated?: () => void;
 }
 
-export function SelecionarClienteModal({ clients, onClose, onSelect, onCreated }: Props) {
+export function SelecionarClienteModal({ onClose, onSelect }: Props) {
 	const [modo, setModo] = useState<'busca' | 'cadastro'>('busca');
 
 	return modo === 'busca' ? (
 		<Busca
-			clients={clients}
 			onClose={onClose}
 			onSelect={onSelect}
 			onCadastrar={() => setModo('cadastro')}
@@ -27,36 +27,32 @@ export function SelecionarClienteModal({ clients, onClose, onSelect, onCreated }
 			onClose={onClose}
 			onVoltar={() => setModo('busca')}
 			onSelect={onSelect}
-			onCreated={onCreated}
 		/>
 	);
 }
 
 function Busca({
-	clients, onClose, onSelect, onCadastrar,
+	onClose, onSelect, onCadastrar,
 }: {
-	clients: ClientList[];
 	onClose: () => void;
 	onSelect: (c: ClientList) => void;
 	onCadastrar: () => void;
 }) {
 	const [busca, setBusca] = useState('');
+	const termo = useDebounce(busca);
 
-	const filtrados = useMemo(() => {
-		const termo = busca.trim().toLowerCase();
-		if (!termo) return clients;
-		const digitos = onlyDigits(termo);
-		return clients.filter(c =>
-			c.name.toLowerCase().includes(termo) ||
-			(digitos && c.document?.includes(digitos))
-		);
-	}, [clients, busca]);
+	// Sem número de página aqui: é uma busca rápida pra vincular à venda, não uma listagem completa.
+	const { data, isPending, isError } = useQuery(
+		clientsQuery({ search: termo || undefined, pageSize: 30 })
+	);
+	const clientes = data?.items ?? [];
 
 	return (
 		<ModalShell
 			title="Buscar cliente"
 			centered
-			maxWidth="700px"
+			maxWidth="min(1100px, 92vw)"
+			bodyMaxHeight="80vh"
 			onClose={onClose}
 			footer={
 				<button
@@ -72,16 +68,21 @@ function Busca({
 				type="text"
 				className="form-control form-control-lg mb-4 rounded-3"
 				placeholder="Nome ou documento…"
+				autoComplete="off"
 				value={busca}
 				onChange={e => setBusca(e.target.value)}
 				autoFocus
 			/>
 
-			{filtrados.length === 0 ? (
+			{isError ? (
+				<div className="alert alert-danger">Não foi possível buscar os clientes.</div>
+			) : isPending ? (
+				<LoadingState />
+			) : clientes.length === 0 ? (
 				<div className="text-center text-muted py-4">Nenhum cliente encontrado.</div>
 			) : (
 				<div className="list-group">
-					{filtrados.map(client => (
+					{clientes.map(client => (
 						<button
 							type="button"
 							key={client.id}
@@ -113,12 +114,11 @@ function Busca({
 }
 
 function CadastroRapido({
-	onClose, onVoltar, onSelect, onCreated,
+	onClose, onVoltar, onSelect,
 }: {
 	onClose: () => void;
 	onVoltar: () => void;
 	onSelect: (c: ClientList) => void;
-	onCreated?: () => void;
 }) {
 	const [name, setName] = useState('');
 	const [district, setDistrict] = useState('');
@@ -127,18 +127,18 @@ function CadastroRapido({
 	const [document, setDocument] = useState('');
 	const [isSaving, setIsSaving] = useState(false);
 	const { sucesso, erro } = useFeedback();
+	const addClient = useAddClient();
 
 	async function handleSubmit(e: FormEvent) {
 		e.preventDefault();
 		setIsSaving(true);
 		try {
-			const novo = await clientService.addClient({
+			const id = await addClient.mutateAsync({
 				name, district, description, phoneNumber, document,
 				email: '', pix: '', cep: '', street: '', complement: '', number: '', city: '', state: '',
 			});
-			// Cliente recém-criado não tem dívida: dá para montar o ClientList aqui.
-			onSelect({ ...novo, totalDebt: 0 });
-			onCreated?.();
+			// POST só devolve o id; cliente recém-criado não tem dívida, então dá pra montar o ClientList aqui mesmo.
+			onSelect({ id, name, district, description, phoneNumber, document, totalDebt: 0 });
 			sucesso('Cliente cadastrado.');
 			onClose();
 		} catch (err: any) {
@@ -152,7 +152,8 @@ function CadastroRapido({
 		<ModalShell
 			title="Cadastro rápido"
 			centered
-			maxWidth="700px"
+			maxWidth="min(1100px, 92vw)"
+			bodyMaxHeight="80vh"
 			onClose={onClose}
 			onSubmit={handleSubmit}
 			footer={
@@ -170,6 +171,7 @@ function CadastroRapido({
 				<label className="form-label fs-5">Nome completo *</label>
 				<input
 					className="form-control form-control-lg"
+					autoComplete="off"
 					value={name}
 					onChange={e => setName(e.target.value)}
 					required
@@ -180,6 +182,7 @@ function CadastroRapido({
 				<label className="form-label fs-5">Bairro</label>
 				<input
 					className="form-control form-control-lg"
+					autoComplete="off"
 					value={district}
 					onChange={e => setDistrict(e.target.value)}
 				/>
@@ -189,6 +192,7 @@ function CadastroRapido({
 				<input
 					className="form-control form-control-lg"
 					placeholder="Filho do seu Zé, deixar na portaria…"
+					autoComplete="off"
 					value={description}
 					onChange={e => setDescription(e.target.value)}
 				/>
@@ -198,6 +202,7 @@ function CadastroRapido({
 				<input
 					className="form-control form-control-lg"
 					inputMode="numeric"
+					autoComplete="off"
 					value={maskPhone(phoneNumber)}
 					onChange={e => setPhoneNumber(onlyDigits(e.target.value))}
 				/>
@@ -207,6 +212,7 @@ function CadastroRapido({
 				<input
 					className="form-control form-control-lg"
 					inputMode="numeric"
+					autoComplete="off"
 					value={maskDocument(document)}
 					onChange={e => setDocument(onlyDigits(e.target.value))}
 				/>

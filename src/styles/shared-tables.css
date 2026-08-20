@@ -10,21 +10,33 @@
   gap: 0.75rem;
   margin-bottom: 1.5rem;
   padding-bottom: 1rem;
-  border-bottom: 1px solid #dee2e6;
+  border-bottom: 1px solid var(--borda);
 }
 
 .page-title {
+  font-family: var(--fonte-display);
   font-size: 1.5rem;
-  font-weight: 500;
-  color: #212529;
+  font-weight: 600;
+  color: var(--texto);
   margin: 0;
 }
 
 .table-responsive {
   overflow-x: auto;
-  background-color: #fff;
-  border-radius: 0.375rem;
-  border: 1px solid #dee2e6;
+  background-color: var(--superficie);
+  border-radius: var(--raio);
+  border: 1px solid var(--borda);
+  /* Ocupa o espaço restante da tela mesmo com poucas/nenhuma linha, em vez de
+     encolher pro tamanho do conteúdo e deixar um vazio grande embaixo. Se o
+     conteúdo passar disso, a página cresce normalmente (é um piso, não um teto).
+     Desconta espaço extra pro rodapé de paginação, quando ele existe. */
+  min-height: max(320px, calc(100vh - 330px));
+}
+
+/* Dentro de modal essa mesma tabela vira uma lista de itens auxiliar, não a
+   tela inteira — o piso alto empurra o rodapé pra fora e força scroll. */
+.modal-content .table-responsive {
+  min-height: 0;
 }
 
 .table {
@@ -38,39 +50,119 @@
   padding: 0.75rem 1rem;
   vertical-align: middle;
   text-align: left;
-  border-bottom: 1px solid #dee2e6;
+  border-bottom: 1px solid var(--borda);
+  /* Sem isso, em telas estreitas o texto quebra em várias linhas e a linha
+     fica alta em vez de compacta — .table-responsive já rola pro lado, é
+     melhor que o conteúdo espremer verticalmente. */
+  white-space: nowrap;
+}
+
+/* Regra do documento de marca: algarismos alinhados em qualquer coluna numérica. */
+.table td {
+  font-variant-numeric: tabular-nums;
 }
 
 .table th {
+  font-family: var(--fonte-marca);
   font-weight: 600;
-  color: #495057;
-  background-color: #f8f9fa;
-  border-bottom: 2px solid #dee2e6;
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--texto-secundario);
+  background-color: var(--fundo);
+  border-bottom: 2px solid var(--borda);
 }
 
 .table-striped tbody tr:nth-of-type(odd) {
-  background-color: rgba(0, 0, 0, 0.02);
+  background-color: rgba(69, 35, 22, 0.02);
 }
 
 .table-hover tbody tr:hover {
-  background-color: rgba(0, 0, 0, 0.04);
+  background-color: rgba(69, 35, 22, 0.04);
 }
 
 /* Linha destacada quando o estoque do produto está baixo/zerado */
 .table tr.linha-estoque-baixo {
-  background-color: #fff8e1;
+  background-color: rgba(213, 153, 63, 0.15);
 }
 
 .table tr.linha-sem-estoque {
-  background-color: #fdecea;
+  background-color: var(--critico-fundo);
 }
 
 /* Badges de status (mantido por compatibilidade com marcações antigas
    .badge-success/.badge-warning/.badge-danger; prefira as classes reais
    do Bootstrap — bg-success, bg-warning, bg-danger — em código novo) */
-.badge-success { background-color: #198754; color: #fff; }
-.badge-warning { background-color: #ffc107; color: #000; }
-.badge-danger { background-color: #dc3545; color: #fff; }
+.badge-success { background-color: var(--ok); color: #fff; }
+.badge-warning { background-color: var(--atencao); color: var(--atencao-texto); }
+.badge-danger { background-color: var(--critico); color: #fff; }
+
+/* Versão em cards das listas (Produtos/Clientes/Entradas) abaixo de lg —
+   troca a tabela larga por cartões empilhados; degraus normais de telas
+   (1 coluna no celular, 2 no tablet via row-cols-md-2 no JSX, tabela volta
+   a partir de lg), não um único liga/desliga. Mesma superfície/borda do
+   .card, sem inventar cor ou elevação nova. */
+.list-card {
+  display: flex;
+  flex-direction: column;
+  background-color: var(--superficie);
+  border: 1px solid var(--borda);
+  border-radius: var(--raio);
+  padding: 1rem;
+  height: 100%;
+}
+
+.list-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.list-card-title {
+  font-weight: 600;
+  color: var(--texto);
+}
+
+.list-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: 0.75rem;
+  font-size: 0.9rem;
+}
+
+.list-card-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.list-card-label {
+  color: var(--texto-secundario);
+  flex-shrink: 0;
+}
+
+.list-card-value {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.list-card-actions {
+  display: flex;
+  gap: 0.5rem;
+  border-top: 1px solid var(--borda);
+  padding-top: 0.75rem;
+  /* Gruda no fundo do card mesmo quando o corpo é curto (ex.: cliente sem
+     observação) — sem isso, cards mais baixos que o vizinho esticado na
+     mesma linha da grade deixavam os botões soltos acima do rodapé. */
+  margin-top: auto;
+}
+
+.list-card-actions .btn {
+  flex: 1 1 auto;
+}
 
 /* Grupo de botões de ação numa linha de tabela */
 .action-buttons {
@@ -79,13 +171,82 @@
   flex-wrap: wrap;
 }
 
+/* Campo de busca da tela de Clientes */
+.clientes-search {
+  max-width: 420px;
+}
+
+/* Célula de observações da tabela de Clientes — trunca em vez de esticar a coluna */
+.clientes-obs-cell {
+  max-width: 250px;
+}
+
+.entradas-obs-cell {
+  max-width: 260px;
+}
+
+/* Tabela de itens da nota (Nova Entrada): "width" no <th> é só sugestão pro
+   layout automático da tabela — sem um piso de verdade, o navegador espremia
+   o <select> de produto e os inputs até ficarem inutilizáveis em vez de
+   deixar a .table-responsive rolar pro lado. min-width força o scroll certo. */
+.entrada-itens-table {
+  min-width: 640px;
+}
+
+.entrada-th-produto {
+  min-width: 220px;
+}
+
+.entrada-th-qtd {
+  width: 110px;
+  min-width: 110px;
+}
+
+.entrada-th-custo {
+  width: 140px;
+  min-width: 140px;
+}
+
+.entrada-th-subtotal {
+  width: 130px;
+  min-width: 130px;
+}
+
+.entrada-th-acao {
+  width: 48px;
+  min-width: 48px;
+}
+
+/* Rodapé do card de item (Nova Entrada, versão mobile): subtotal + remover.
+   Não reaproveita .list-card-actions porque ali os botões esticam pra
+   dividir a largura igualmente (Ver/Editar/Excluir) — aqui só tem um botão
+   circular, que não pode esticar. */
+.entrada-item-card-footer {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-top: 1px solid var(--borda);
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+}
+
+/* Botão circular de paginação ([‹] Página X de Y [›]) */
+.pager-btn {
+  width: 2rem;
+  height: 2rem;
+}
+
+.produtos-th-foto {
+  width: 64px;
+}
+
 /* Miniatura da foto do produto na tabela de Estoque/Produtos */
 .produto-thumb {
   width: 48px;
   height: 48px;
   object-fit: cover;
   border-radius: 0.375rem;
-  border: 1px solid #dee2e6;
+  border: 1px solid var(--borda);
   display: block;
 }
 
@@ -93,7 +254,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #f8f9fa;
+  background-color: var(--fundo);
   font-size: 1.4rem;
 }
 
@@ -101,14 +262,14 @@
 .produto-foto-preview {
   width: 160px;
   height: 160px;
-  border: 2px dashed #adb5bd;
+  border: 2px dashed var(--cafe-medio);
   border-radius: 0.75rem;
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
   cursor: pointer;
-  background-color: #f8f9fa;
+  background-color: var(--fundo);
   text-align: center;
   padding: 0.5rem;
 }
@@ -118,4 +279,3 @@
   height: 100%;
   object-fit: cover;
 }
-

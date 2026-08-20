@@ -17,8 +17,8 @@ export interface AbrirOptions {
 
 interface Ctx {
 	abrirCliente: (clientId: number, opts?: AbrirOptions) => void;
-	novoCliente: (opts?: AbrirOptions) => void;
-	excluirCliente: (client: ClienteResumo, opts?: AbrirOptions) => Promise<void>;
+	novoCliente: () => void;
+	excluirCliente: (client: ClienteResumo) => Promise<void>;
 }
 
 const ClienteModalContext = createContext<Ctx | null>(null);
@@ -49,11 +49,11 @@ export function ClienteModalProvider({ children }: { children: ReactNode }) {
 		});
 	}, []);
 
-	const novoCliente = useCallback((opts: AbrirOptions = {}) => {
+	const novoCliente = useCallback(() => {
 		setState({ clientId: null, tab: ActiveTab.Details, mode: 'edit'});
 	}, []);
 
-	const excluirCliente = useCallback(async (client: ClienteResumo, opts: AbrirOptions = {}) => {
+	const excluirCliente = useCallback(async (client: ClienteResumo) => {
 		const ok = await confirmar({
 			title: 'Excluir cliente',
 			confirmLabel: 'Excluir cliente',

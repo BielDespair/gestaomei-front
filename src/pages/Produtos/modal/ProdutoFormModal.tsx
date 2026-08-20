@@ -3,6 +3,7 @@ import type { Product } from '../../../api/products/products.types';
 import { useAddProduct, useUpdateProduct, useRemoveProductImage } from '../../../api/products/products.queries';
 import { ModalShell } from '../../../components/ModalShell';
 import { useFeedback } from '../../../components/Feedback/FeedbackProvider';
+import { getImageUrl } from '../../../utils/images';
 
 export type ModalMode = 'view' | 'edit';
 
@@ -92,8 +93,8 @@ export function ProdutoFormModal({ product, mode = 'edit', onClose }: Props) {
 		}
 	}
 
-	// Preview local tem prioridade; remoção pendente esconde a foto atual.
-	const fotoSalva = removerImagem ? null : (product?.imageUrl ?? null);
+	// Preview local (já é um blob: URL) tem prioridade; remoção pendente esconde a foto atual.
+	const fotoSalva = removerImagem ? null : getImageUrl(product?.imageUrl);
 	const fotoExibida = imagePreview ?? fotoSalva;
 	const ro = { readOnly: !isEditing, className: 'form-control' };
 
@@ -183,6 +184,7 @@ export function ProdutoFormModal({ product, mode = 'edit', onClose }: Props) {
 					<input
 						{...ro}
 						name="name"
+						autoComplete="off"
 						value={formData.name}
 						onChange={handleInputChange}
 						required
@@ -193,6 +195,7 @@ export function ProdutoFormModal({ product, mode = 'edit', onClose }: Props) {
 					<input
 						{...ro}
 						name="sku"
+						autoComplete="off"
 						value={formData.sku}
 						onChange={handleInputChange}
 						required
@@ -203,21 +206,26 @@ export function ProdutoFormModal({ product, mode = 'edit', onClose }: Props) {
 					<input
 						{...ro}
 						name="description"
+						autoComplete="off"
 						value={formData.description}
 						onChange={handleInputChange}
 					/>
 				</div>
 				<div className="col-md-6">
-					<label className="form-label">Preço de venda (R$)</label>
-					<input
-						type="number"
-						step="0.01"
-						className="form-control"
-						name="sellPrice"
-						value={formData.sellPrice}
-						onChange={handleInputChange}
-						required
-					/>
+					<label className="form-label">Preço de venda</label>
+					<div className="position-relative">
+						<span className="input-rs-prefix" aria-hidden="true">R$</span>
+						<input
+							type="number"
+							step="0.01"
+							className="form-control input-com-prefixo-rs"
+							name="sellPrice"
+							autoComplete="off"
+							value={formData.sellPrice}
+							onChange={handleInputChange}
+							required
+						/>
+					</div>
 				</div>
 				<div className="col-md-6">
 					<label className="form-label">Estoque atual</label>

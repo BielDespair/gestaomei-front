@@ -19,23 +19,23 @@ export function DadosTab({ form, readOnly = false }: Props) {
 			<div className="row g-3 mb-4">
 				<div className="col-md-8">
 					<label className="form-label">Nome completo</label>
-					<input required {...ro} {...bind('name')} />
+					<input required autoComplete="off" {...ro} {...bind('name')} />
 				</div>
 				<div className="col-md-4">
 					<label className="form-label">CPF / CNPJ</label>
-					<input {...ro} {...bind('document', maskDocument)} />
+					<input autoComplete="off" {...ro} {...bind('document', maskDocument)} />
 				</div>
 				<div className="col-md-4">
 					<label className="form-label">Telefone</label>
-					<input {...ro} {...bind('phoneNumber', maskPhone)} />
+					<input autoComplete="off" {...ro} {...bind('phoneNumber', maskPhone)} />
 				</div>
 				<div className="col-md-4">
 					<label className="form-label">E-mail</label>
-					<input type="email" {...ro} {...bind('email')} />
+					<input type="email" autoComplete="off" {...ro} {...bind('email')} />
 				</div>
 				<div className="col-md-4">
 					<label className="form-label">Chave PIX</label>
-					<input {...ro} {...bind('pix')} />
+					<input autoComplete="off" {...ro} {...bind('pix')} />
 				</div>
 			</div>
 
@@ -45,6 +45,7 @@ export function DadosTab({ form, readOnly = false }: Props) {
 					<label className="form-label">CEP</label>
 					<input
 						placeholder="38400-000"
+						autoComplete="off"
 						onBlur={readOnly ? undefined : handleCepBlur}
 						{...ro}
 						{...bind('cep', maskCep)}
@@ -53,29 +54,30 @@ export function DadosTab({ form, readOnly = false }: Props) {
 				</div>
 				<div className="col-md-7">
 					<label className="form-label">Rua / avenida</label>
-					<input {...ro} {...bind('street')} />
+					<input autoComplete="off" {...ro} {...bind('street')} />
 				</div>
 				<div className="col-md-2">
 					<label className="form-label">Número</label>
-					<input {...ro} {...bind('number')} />
+					<input autoComplete="off" {...ro} {...bind('number')} />
 				</div>
 				<div className="col-md-3">
 					<label className="form-label">Complemento</label>
-					<input {...ro} {...bind('complement')} />
+					<input autoComplete="off" {...ro} {...bind('complement')} />
 				</div>
 				<div className="col-md-3">
 					<label className="form-label">Bairro</label>
-					<input {...ro} {...bind('district')} />
+					<input autoComplete="off" {...ro} {...bind('district')} />
 				</div>
 				<div className="col-md-4">
 					<label className="form-label">Cidade</label>
-					<input {...ro} {...bind('city')} />
+					<input autoComplete="off" {...ro} {...bind('city')} />
 				</div>
 				<div className="col-md-2">
 					<label className="form-label">UF</label>
 					<select
 						className="form-select"
 						disabled={readOnly}
+						autoComplete="off"
 						{...bind('state')}
 					>
 						<option value="">--</option>
@@ -92,6 +94,7 @@ export function DadosTab({ form, readOnly = false }: Props) {
 			<textarea
 				rows={2}
 				placeholder="Primo do Carlos, dono da padaria da esquina"
+				autoComplete="off"
 				{...ro}
 				{...bind('description')}
 			/>

@@ -4,6 +4,7 @@ import type { TabProps } from './ClienteModal';
 import { salesByClientQuery, saleDetailQuery } from '../../../api/sales/sales.queries';
 import { DeliveryStatus, PaymentStatus, type SaleListItem } from '../../../api/sales/sales.types';
 import { formatMoney, formatDate } from '../../../utils/format';
+import { LoadingState } from '../../../components/LoadingState';
 
 const PAYMENT_LABEL: Record<PaymentStatus, string> = {
 	[PaymentStatus.Pending]: 'Fiado',
@@ -60,7 +61,7 @@ function CompraCard({ sale }: { sale: SaleListItem }) {
 			{isOpen && (
 				<div className="table-responsive mt-2">
 					{isPending ? (
-						<div className="text-center text-muted py-2">Carregando itens…</div>
+						<LoadingState label="Carregando itens…" size="sm" />
 					) : isError ? (
 						<div className="alert alert-danger py-2 mb-0">Não foi possível carregar os itens dessa compra.</div>
 					) : (
@@ -95,7 +96,7 @@ export function ComprasTab({ client }: TabProps) {
 	const { data, isPending, isError } = useQuery(salesByClientQuery(client.id));
 
 	if (isPending) {
-		return <div className="text-center text-muted py-5">Carregando…</div>;
+		return <LoadingState />;
 	}
 
 	if (isError) {

@@ -3,6 +3,7 @@ import type { Product } from '../../../api/products/products.types';
 import { ModalShell } from '../../../components/ModalShell';
 import { useFeedback } from '../../../components/Feedback/FeedbackProvider';
 import { formatMoney } from '../../../utils/format';
+import { getImageUrl } from '../../../utils/images';
 
 interface Props {
 	product: Product;
@@ -11,11 +12,11 @@ interface Props {
 }
 
 export function ProdutoModal({ product, onClose, onConfirm }: Props) {
-	const [price, setPrice] = useState(String(product.sellPrice));
+	const [price, setPrice] = useState(product.sellPrice.toFixed(2).replace('.', ','));
 	const [qty, setQty] = useState(1);
 	const { erro } = useFeedback();
 
-	const parsed = parseFloat(price);
+	const parsed = parseFloat(price.replace(',', '.'));
 	const valido = !isNaN(parsed) && parsed >= 0;
 
 	function handleSubmit(e: FormEvent) {
@@ -33,7 +34,7 @@ export function ProdutoModal({ product, onClose, onConfirm }: Props) {
 			title={
 				<span className="d-flex align-items-center gap-3">
 					{product.imageUrl
-						? <img src={product.imageUrl} alt="" className="produto-modal-thumb" />
+						? <img src={getImageUrl(product.imageUrl)!} alt="" className="produto-modal-thumb" />
 						: <span className="produto-modal-thumb produto-modal-thumb-placeholder">☕</span>}
 					<span className="fw-bold">{product.name}</span>
 				</span>
@@ -50,17 +51,21 @@ export function ProdutoModal({ product, onClose, onConfirm }: Props) {
 		>
 			<div className="d-flex flex-column gap-4 py-2">
 				<div className="text-center">
-					<label className="form-label text-muted fs-5">Preço unitário (R$)</label>
-					<input
-						type="number"
-						step="0.01"
-						inputMode="decimal"
-						className="form-control form-control-lg text-center fw-bold input-giant border-primary border-3 rounded-3"
-						value={price}
-						onChange={e => setPrice(e.target.value)}
-						required
-						autoFocus
-					/>
+					<label className="form-label text-muted fs-5 d-block">Preço unitário</label>
+					<div className="position-relative d-inline-block input-giant-wrap">
+						<span className="input-giant-rs" aria-hidden="true">R$</span>
+						<input
+							type="text"
+							inputMode="decimal"
+							autoComplete="off"
+							className="form-control fw-bold input-giant input-giant-com-prefixo border-primary border-3 rounded-3"
+							value={price}
+							onChange={e => setPrice(e.target.value)}
+							onBlur={() => { if (valido) setPrice(parsed.toFixed(2).replace('.', ',')); }}
+							required
+							autoFocus
+						/>
+					</div>
 				</div>
 
 				<div className="text-center">

@@ -14,6 +14,7 @@ import {
 } from '../../api/dashboard/dashboard.queries';
 import type { SummaryPreset } from '../../api/dashboard/dashboard.types';
 import { useMarkAsDelivered } from '../../api/sales/sales.queries';
+import { LoadingState } from '../../components/LoadingState';
 import { Graficos } from './Graficos';
 import './styles.css';
 
@@ -141,13 +142,13 @@ export function Dashboard() {
         <div className="row g-3">
           <div className="col-lg-6">
             <div className="card shadow-sm h-100">
-              <div className="card-header bg-white d-flex justify-content-between align-items-center">
+              <div className="card-header d-flex justify-content-between align-items-center">
                 <span className="fw-semibold fs-5">Quem está devendo</span>
                 {totalPendente > 0 && <span className="badge bg-danger fs-6">{formatMoney(totalPendente)}</span>}
               </div>
               <div className="card-body p-0">
                 {isLoadingPendencias ? (
-                  <div className="text-center text-muted py-5">Carregando...</div>
+                  <LoadingState />
                 ) : devedores?.length === 0 ? (
                   <div className="text-center text-muted py-5 fs-5">Ninguém devendo agora.</div>
                 ) : (
@@ -191,12 +192,12 @@ export function Dashboard() {
 
           <div className="col-lg-6">
             <div className="card shadow-sm h-100">
-              <div className="card-header bg-white">
+              <div className="card-header">
                 <span className="fw-semibold fs-5">Quem ainda não recebeu o produto</span>
               </div>
               <div className="card-body p-0">
                 {isLoadingPendencias ? (
-                  <div className="text-center text-muted py-5">Carregando...</div>
+                  <LoadingState />
                 ) : entregasPendentes?.length === 0 ? (
                   <div className="text-center text-muted py-5 fs-5">Tudo entregue.</div>
                 ) : (
@@ -227,7 +228,7 @@ export function Dashboard() {
 
           <div className="col-12">
             <div className="card shadow-sm">
-              <div className="card-header bg-white d-flex justify-content-between align-items-center">
+              <div className="card-header d-flex justify-content-between align-items-center">
                 <span className="fw-semibold fs-5">Aguardando reposição</span>
                 {(aguardandoReposicao?.length ?? 0) > 0 && (
                   <Link to="/entradas" className="btn btn-sm btn-warning">Registrar Entrada</Link>
@@ -235,7 +236,7 @@ export function Dashboard() {
               </div>
               <div className="card-body p-0">
                 {isLoadingPendencias ? (
-                  <div className="text-center text-muted py-4">Carregando...</div>
+                  <LoadingState size="md" />
                 ) : aguardandoReposicao?.length === 0 ? (
                   <div className="text-center text-muted py-4">Nenhuma venda sob encomenda esperando reposição.</div>
                 ) : (
@@ -259,13 +260,13 @@ export function Dashboard() {
 
           <div className="col-12">
             <div className="card shadow-sm">
-              <div className="card-header bg-white d-flex justify-content-between align-items-center">
+              <div className="card-header d-flex justify-content-between align-items-center">
                 <span className="fw-semibold fs-5">Estoque baixo</span>
                 <Link to="/produtos" className="btn btn-sm btn-outline-primary">Ver estoque</Link>
               </div>
               <div className="card-body p-0">
                 {isLoadingPendencias ? (
-                  <div className="text-center text-muted py-4">Carregando...</div>
+                  <LoadingState size="md" />
                 ) : lowStockPreview.length === 0 ? (
                   <div className="text-center text-muted py-4">Nenhum produto com estoque baixo.</div>
                 ) : (
@@ -381,10 +382,10 @@ export function Dashboard() {
           <div className="row g-3">
             <div className="col-lg-6">
               <div className="card shadow-sm h-100">
-                <div className="card-header bg-white"><span className="fw-semibold fs-5">Melhores Clientes</span></div>
+                <div className="card-header"><span className="fw-semibold fs-5">Melhores Clientes</span></div>
                 <div className="card-body">
                   {isLoadingRankings ? (
-                    <div className="text-center text-muted py-4">Carregando...</div>
+                    <LoadingState size="md" />
                   ) : topClientes.length === 0 ? (
                     <div className="text-center text-muted py-4">Ainda sem vendas com cliente identificado.</div>
                   ) : (
@@ -422,10 +423,10 @@ export function Dashboard() {
 
             <div className="col-lg-6">
               <div className="card shadow-sm h-100">
-                <div className="card-header bg-white"><span className="fw-semibold fs-5">Produtos mais vendidos</span></div>
+                <div className="card-header"><span className="fw-semibold fs-5">Produtos mais vendidos</span></div>
                 <div className="card-body p-0">
                   {isLoadingRankings ? (
-                    <div className="text-center text-muted py-4">Carregando...</div>
+                    <LoadingState size="md" />
                   ) : topProdutos.length === 0 ? (
                     <div className="text-center text-muted py-4">Ainda não há vendas registradas.</div>
                   ) : (

@@ -3,6 +3,7 @@ import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { RouteErrorBoundary } from '../RouteErrorBoundary';
 import { ClienteModalProvider } from '../../pages/Clientes/modal/ClienteModalProvider';
+import { CoffeeMark } from '../CoffeeMark';
 import './styles.css';
 
 const NAV_ITEMS = [
@@ -19,9 +20,12 @@ export function Layout() {
 
   return (
     <>
-      <nav className="navbar navbar-expand-lg navbar-light bg-white shadow-sm sticky-top">
+      <nav className="navbar navbar-expand-xl navbar-dark navbar-marca shadow-sm sticky-top">
         <div className="container">
-          <span className="navbar-brand fw-bold mb-0">Controle de Estoque</span>
+          <span className="navbar-brand fw-bold mb-0 d-flex align-items-center gap-2">
+            <CoffeeMark size={26} />
+            Controle de Estoque
+          </span>
 
           <button
             className="navbar-toggler"
@@ -53,10 +57,11 @@ export function Layout() {
             </ul>
 
             <div className="d-flex align-items-center gap-3 border-top border-lg-0 pt-3 pt-lg-0 mt-2 mt-lg-0">
-              <span className="text-muted text-nowrap">
+              <span className="text-nowrap" style={{ color: 'var(--cafe-latte)' }}>
                 Olá, <strong>{user?.name}</strong>
               </span>
-              <button className="btn btn-outline-danger btn-sm" onClick={signOut}>
+              <button className="btn btn-sair btn-sm" onClick={signOut}>
+                <i className="bi bi-box-arrow-right me-1" aria-hidden="true" />
                 Sair
               </button>
             </div>

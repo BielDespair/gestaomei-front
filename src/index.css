@@ -1,5 +1,91 @@
+:root {
+  /* Café Fazenda Ribeirão — marca aplicada ao Controle de Estoque */
+  --cafe-espresso: #452316;
+  --cafe-mocha: #643725;
+  --cafe-medio: #774635;
+  --cafe-dourado: #D5993F;
+  --cafe-latte: #EBD2AF;
+  --cafe-creme: #FAF2DE;
+  --cafe-creme-fundo: #F2E6CC;
 
+  /* Escala de superfícies: sempre do mais escuro pro mais claro, nunca volta.
+     Fundo da página é o creme mais fundo; cards/modais/painéis usam o creme
+     da marca (um degrau mais claro); campo de digitação é o único branco —
+     branco passa a significar exclusivamente "aqui o usuário digita". */
+  --fundo: var(--cafe-creme-fundo);
+  --superficie: var(--cafe-creme);
+  --campo-fundo: #FFFFFF;
+  --campo-borda: #A88A63;
+  /* Checkbox/radio/toggle ficam direto sobre a superfície creme, não dentro
+     de um campo branco — --campo-borda ali dá só 2,90:1 (reprova o mínimo
+     de 3:1). --borda-controle é mais escura pra compensar. */
+  --borda-controle: #9C7B5E;
+  --texto: var(--cafe-espresso);
+  --texto-secundario: var(--cafe-medio);
+  --borda: rgba(69, 35, 22, .14);
+  --acao: var(--cafe-espresso);
+  --acao-hover: var(--cafe-mocha);
+  --realce: var(--cafe-dourado);
+  /* Anel de foco: SEMPRE espresso, nunca dourado — dourado sobre claro dá
+     2,48:1 e um indicador de foco exige 3:1 mínimo (doc de marca, seção 07). */
+  --foco: var(--cafe-espresso);
 
+  --ok: #3E6B4A;
+  --ok-fundo: #E4EDE2;
+  --atencao: var(--cafe-dourado);
+  --atencao-texto: var(--cafe-espresso);
+  --critico: #8C2F20;
+  --critico-fundo: #F6E2DD;
+
+  --fonte-display: 'Fraunces', Georgia, serif;
+  --fonte-marca: 'Poppins', system-ui, sans-serif;
+  --fonte-ui: 'Inter', system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+  --raio: 10px;
+
+  /* Repintura do Bootstrap 5.3 — recolore btn/text/bg/border-primary,
+     badges de estado, links, fundo e tipografia em todo o app. */
+  --bs-primary: var(--acao);
+  --bs-primary-rgb: 69, 35, 22;
+  --bs-primary-bg-subtle: var(--cafe-latte);
+  --bs-primary-border-subtle: var(--cafe-dourado);
+  --bs-primary-text-emphasis: var(--acao);
+
+  --bs-success: var(--ok);
+  --bs-success-rgb: 62, 107, 74;
+  --bs-success-bg-subtle: var(--ok-fundo);
+
+  --bs-warning: var(--atencao);
+  --bs-warning-rgb: 213, 153, 63;
+  --bs-warning-text-emphasis: var(--atencao-texto);
+
+  --bs-danger: var(--critico);
+  --bs-danger-rgb: 140, 47, 32;
+  --bs-danger-bg-subtle: var(--critico-fundo);
+
+  --bs-body-bg: var(--fundo);
+  --bs-body-color: var(--texto);
+  --bs-body-color-rgb: 69, 35, 22;
+  --bs-body-font-family: var(--fonte-ui);
+  --bs-border-color: var(--borda);
+  --bs-border-radius: var(--raio);
+  --bs-link-color: var(--acao);
+  --bs-link-color-rgb: 69, 35, 22;
+  --bs-link-hover-color: var(--acao-hover);
+  --bs-link-hover-color-rgb: 100, 55, 37;
+
+  --bs-emphasis-color: var(--acao);
+  --bs-emphasis-color-rgb: 69, 35, 22;
+  --bs-secondary-color: rgba(119, 70, 53, 0.75);
+  --bs-secondary-color-rgb: 119, 70, 53;
+  --bs-tertiary-color: rgba(119, 70, 53, 0.5);
+  --bs-tertiary-bg: var(--cafe-latte);
+
+  /* bg-light é usado pra caixas de destaque (ex: "Total em aberto") dentro
+     de cards/modais já brancos — vira creme em vez do cinza frio padrão. */
+  --bs-light: var(--cafe-creme);
+  --bs-light-rgb: 250, 242, 222;
+}
 
 * {
   margin: 0;
@@ -12,12 +98,16 @@ html, body {
   padding: 0 !important;
   width: 100%;
   min-height: 100vh;
-  background-color: #f8f9fa;
-  color: #212529;
-  /* Font-stack oficial do Bootstrap 5 */
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", "Liberation Sans", Arial, sans-serif;
+  background-color: var(--fundo);
+  color: var(--texto);
+  font-family: var(--fonte-ui);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--fonte-display);
+  font-weight: 600;
 }
 
 #root {
@@ -30,9 +120,311 @@ html, body {
   text-align: left !important;
 }
 
+/* Botões do Bootstrap 5.3 usam variáveis LOCAIS por variante (--bs-btn-bg etc,
+   inicializadas com hex fixo no CSS compilado) — sobrescrever --bs-primary no
+   :root não alcança elas. Precisa repintar cada variante usada no app. */
+.btn-primary {
+  --bs-btn-color: #fff;
+  --bs-btn-bg: var(--cafe-espresso);
+  --bs-btn-border-color: var(--cafe-espresso);
+  --bs-btn-hover-color: #fff;
+  --bs-btn-hover-bg: var(--cafe-mocha);
+  --bs-btn-hover-border-color: var(--cafe-mocha);
+  --bs-btn-active-color: #fff;
+  --bs-btn-active-bg: var(--cafe-mocha);
+  --bs-btn-active-border-color: var(--cafe-mocha);
+  --bs-btn-disabled-bg: var(--cafe-espresso);
+  --bs-btn-disabled-border-color: var(--cafe-espresso);
+  --bs-btn-focus-shadow-rgb: 69, 35, 22;
+}
+
+.btn-outline-primary {
+  --bs-btn-color: var(--cafe-espresso);
+  --bs-btn-border-color: var(--cafe-espresso);
+  --bs-btn-hover-color: #fff;
+  --bs-btn-hover-bg: var(--cafe-espresso);
+  --bs-btn-hover-border-color: var(--cafe-espresso);
+  --bs-btn-active-color: #fff;
+  --bs-btn-active-bg: var(--cafe-espresso);
+  --bs-btn-active-border-color: var(--cafe-espresso);
+  --bs-btn-focus-shadow-rgb: 69, 35, 22;
+}
+
+.btn-success {
+  /* Texto branco em #3E6B4A dá 2,43:1 — abaixo do mínimo. Creme sobe pra 5,52:1. */
+  --bs-btn-color: var(--cafe-creme);
+  --bs-btn-bg: var(--ok);
+  --bs-btn-border-color: var(--ok);
+  --bs-btn-hover-color: var(--cafe-creme);
+  --bs-btn-hover-bg: #345a3e;
+  --bs-btn-hover-border-color: #345a3e;
+  --bs-btn-active-color: var(--cafe-creme);
+  --bs-btn-active-bg: #345a3e;
+  --bs-btn-active-border-color: #345a3e;
+  --bs-btn-disabled-bg: var(--ok);
+  --bs-btn-disabled-border-color: var(--ok);
+  --bs-btn-focus-shadow-rgb: 62, 107, 74;
+}
+
+.btn-danger {
+  --bs-btn-bg: var(--critico);
+  --bs-btn-border-color: var(--critico);
+  --bs-btn-hover-bg: #732619;
+  --bs-btn-hover-border-color: #732619;
+  --bs-btn-active-bg: #732619;
+  --bs-btn-active-border-color: #732619;
+  --bs-btn-disabled-bg: var(--critico);
+  --bs-btn-disabled-border-color: var(--critico);
+  --bs-btn-focus-shadow-rgb: 140, 47, 32;
+}
+
+.btn-outline-danger {
+  --bs-btn-color: var(--critico);
+  --bs-btn-border-color: var(--critico);
+  --bs-btn-hover-bg: var(--critico);
+  --bs-btn-hover-border-color: var(--critico);
+  --bs-btn-active-bg: var(--critico);
+  --bs-btn-active-border-color: var(--critico);
+  --bs-btn-focus-shadow-rgb: 140, 47, 32;
+}
+
+.btn-warning {
+  --bs-btn-color: var(--cafe-espresso);
+  --bs-btn-bg: var(--cafe-dourado);
+  --bs-btn-border-color: var(--cafe-dourado);
+  --bs-btn-hover-color: var(--cafe-espresso);
+  --bs-btn-hover-bg: #c78a30;
+  --bs-btn-hover-border-color: #c78a30;
+  --bs-btn-active-color: var(--cafe-espresso);
+  --bs-btn-active-bg: #c78a30;
+  --bs-btn-active-border-color: #c78a30;
+  --bs-btn-focus-shadow-rgb: 213, 153, 63;
+}
+
 .btn-outline-warning {
-  --bs-btn-color: #997404;
-  --bs-btn-border-color: #ffc107;
-  --bs-btn-hover-bg: #ffc107;
-  --bs-btn-hover-color: #000;
+  --bs-btn-color: var(--cafe-mocha);
+  --bs-btn-border-color: var(--cafe-dourado);
+  --bs-btn-hover-bg: var(--cafe-dourado);
+  --bs-btn-hover-color: var(--cafe-espresso);
+}
+
+/* .btn-outline-secondary é usado em toda aba/toggle não-selecionada (Nova
+   venda/Histórico, Pendências/Meu Negócio/Gráficos, "Toque p/ vincular
+   cliente", presets de data...) — nunca foi repintado, então o hover caía
+   no cinza padrão do Bootstrap em vez do tom da marca. */
+.btn-outline-secondary {
+  --bs-btn-color: var(--texto-secundario);
+  --bs-btn-border-color: var(--borda);
+  --bs-btn-hover-color: var(--texto);
+  --bs-btn-hover-bg: rgba(69, 35, 22, 0.08);
+  --bs-btn-hover-border-color: var(--cafe-medio);
+  --bs-btn-active-color: #fff;
+  --bs-btn-active-bg: var(--cafe-medio);
+  --bs-btn-active-border-color: var(--cafe-medio);
+  --bs-btn-focus-shadow-rgb: 119, 70, 53;
+}
+
+/* Mesmo problema dos botões: .card/.list-group/.modal-content redeclaram sua
+   própria --bs-*-bg LOCAL (inicializada com var(--bs-body-bg)) direto na
+   regra do próprio Bootstrap — uma declaração direta no elemento sempre
+   vence um valor herdado do :root, não importa o que a gente sobrescreva lá.
+   Por isso um "bg-light"/"bg-white" manual no JSX parecia funcionar enquanto
+   o resto ficava achatado na cor da página: só o utilitário simples lê a
+   variável global direto, o componente reinicializa a sua por conta própria. */
+.card {
+  --bs-card-bg: var(--superficie);
+}
+
+.list-group {
+  --bs-list-group-bg: var(--superficie);
+}
+
+.modal-content {
+  --bs-modal-bg: var(--superficie);
+}
+
+/* Habilitado vs. desabilitado precisa ser visível sem ler o rodapé do modal:
+   habilitado é o único lugar branco (--campo-fundo) com borda definida;
+   desabilitado "afunda" de volta pro tom do fundo da página, sem borda. */
+.form-control,
+.form-select {
+  background-color: var(--campo-fundo);
+  border: 1px solid var(--campo-borda);
+}
+
+.form-control:focus,
+.form-select:focus {
+  border-color: var(--campo-borda);
+  box-shadow: none;
+  outline: 2px solid var(--foco);
+  outline-offset: 2px;
+}
+
+.form-control:disabled,
+.form-control[readonly],
+.form-select:disabled {
+  background-color: var(--fundo);
+  border-color: transparent;
+  color: var(--texto-secundario);
+  opacity: 1;
+}
+
+/* "R$" ao lado do valor, dentro da MESMA caixa do campo — não uma caixa de
+   input-group separada, e não no rótulo acima. Mesmo princípio do
+   .input-giant-rs de Vendas, em escala normal de form-control. */
+.input-rs-prefix {
+  position: absolute;
+  left: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-weight: 600;
+  color: var(--texto-secundario);
+  pointer-events: none;
+}
+
+.input-com-prefixo-rs {
+  padding-left: 2.25rem;
+}
+
+/* A setinha do <select> é um SVG compilado com cor fixa (#343a40) no CSS do
+   Bootstrap — não é uma referência viva a nenhuma variável, então nunca
+   acompanhou a repintura. Troca só o ícone, mantendo posição/tamanho padrão. */
+.form-select {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23774635' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
+}
+
+/* Checkbox/radio marcados também usam uma cor local fixa (azul do Bootstrap),
+   não var(--bs-primary) — mesmo padrão dos outros componentes nunca repintados.
+   Borda usa --borda-controle (não --campo-borda): esses controles ficam direto
+   sobre a superfície creme, não dentro de um campo branco. */
+.form-check-input {
+  border-color: var(--borda-controle);
+}
+
+.form-check-input:checked {
+  background-color: var(--acao);
+  border-color: var(--acao);
+}
+
+.form-check-input:focus {
+  border-color: var(--borda-controle);
+  box-shadow: none;
+  outline: 2px solid var(--foco);
+  outline-offset: 2px;
+}
+
+/* Botão "quieto": Cancelar/Fechar/Voltar nunca competem com a ação principal
+   (Salvar), então não levam preenchimento — só contorno e texto secundário. */
+.btn-secondary {
+  --bs-btn-color: var(--texto-secundario);
+  --bs-btn-bg: transparent;
+  --bs-btn-border-color: var(--borda);
+  --bs-btn-hover-color: var(--texto);
+  --bs-btn-hover-bg: rgba(69, 35, 22, 0.06);
+  --bs-btn-hover-border-color: var(--borda);
+  --bs-btn-active-color: var(--texto);
+  --bs-btn-active-bg: rgba(69, 35, 22, 0.1);
+  --bs-btn-active-border-color: var(--borda);
+  --bs-btn-disabled-color: var(--texto-secundario);
+  --bs-btn-disabled-bg: transparent;
+  --bs-btn-disabled-border-color: var(--borda);
+}
+
+/* btn-outline-light (branco) some sobre o fundo espresso escuro da navbar —
+   contorno e texto em latte ficam legíveis nesse fundo. Vive aqui (não em
+   Layout/styles.css) porque o Vite injeta o CSS de página/componente ANTES
+   do bootstrap.min.css nesse projeto — só index.css carrega depois de
+   verdade, então só aqui uma sobrescrita de --bs-btn-* de mesma
+   especificidade tem garantia de vencer a regra base do Bootstrap. */
+.btn-sair {
+  --bs-btn-color: var(--cafe-latte);
+  --bs-btn-bg: transparent;
+  --bs-btn-border-color: rgba(235, 210, 175, 0.4);
+  --bs-btn-hover-color: var(--cafe-espresso);
+  --bs-btn-hover-bg: var(--cafe-latte);
+  --bs-btn-hover-border-color: var(--cafe-latte);
+  --bs-btn-active-color: var(--cafe-espresso);
+  --bs-btn-active-bg: var(--cafe-latte);
+  --bs-btn-active-border-color: var(--cafe-latte);
+}
+
+/* .sticky-lg-top da sidebar de Vendas usa o mesmo z-index (1020) do
+   sticky-top da navbar — como a sidebar vem depois no DOM, ela cobria a
+   navbar ao rolar a página. Mesma raiz do problema do .btn-sair: só
+   index.css tem garantia de carregar depois do bootstrap.min.css aqui. */
+.vendas-sidebar {
+  z-index: 1010;
+}
+
+/* Botão de remover item (× de linha de carrinho/tabela): preenchido e com alvo
+   de toque generoso — no outline fino sumia contra o fundo em telas de toque.
+   44px bate o mínimo de área clicável do doc de marca (44×44px, mesmo que o
+   desenho pareça menor). */
+.btn-remove {
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 1rem;
+}
+
+/* Em linha de tabela densa (Entradas) não há espaço pra um alvo visual de
+   44px sem inchar a linha — o desenho encolhe, mas a área clicável real
+   continua 44px via um pseudo-elemento invisível maior que o botão. */
+.btn-remove.btn-sm {
+  position: relative;
+  width: 2rem;
+  height: 2rem;
+  font-size: 0.85rem;
+}
+
+.btn-remove.btn-sm::after {
+  content: '';
+  position: absolute;
+  inset: -0.375rem;
+}
+
+/* .btn-light nunca foi repintado — só é usado nos círculos +/- de quantidade
+   do modal de venda, e caía no branco/cinza padrão do Bootstrap. */
+.btn-light {
+  --bs-btn-color: var(--texto);
+  --bs-btn-bg: var(--cafe-latte);
+  --bs-btn-border-color: var(--borda);
+  --bs-btn-hover-color: var(--cafe-espresso);
+  --bs-btn-hover-bg: var(--cafe-dourado);
+  --bs-btn-hover-border-color: var(--cafe-dourado);
+  --bs-btn-active-color: var(--cafe-espresso);
+  --bs-btn-active-bg: var(--cafe-dourado);
+  --bs-btn-active-border-color: var(--cafe-dourado);
+  --bs-btn-disabled-color: var(--texto-secundario);
+  --bs-btn-disabled-bg: var(--cafe-latte);
+  --bs-btn-disabled-border-color: var(--borda);
+  --bs-btn-focus-shadow-rgb: 213, 153, 63;
+}
+
+/* .btn-close original ficava colado no canto via margem negativa que "puxa"
+   o botão pro dentro do padding do header. Nosso botão maior precisa da
+   mesma folga negativa, senão fica solto/deslocado do canto. */
+.modal-header .btn-remove {
+  margin: -0.75rem -0.75rem -0.75rem auto;
+}
+
+/* Todo chip carrega um ponto colorido além do fundo — lê melhor no sol e
+   funciona como reforço visual redundante à cor. */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+}
+
+.badge::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: currentColor;
+  flex-shrink: 0;
 }

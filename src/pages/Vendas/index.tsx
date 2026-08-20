@@ -1,10 +1,12 @@
-import { useEffect, useRef, useState } from 'react';
-import { getProducts } from '../../api/products/products.api';
-import { vendaService } from '../../api/sales/sales.api';
+import { useRef, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { productsQuery } from '../../api/products/products.queries';
+import { useCreateSale } from '../../api/sales/sales.queries';
 import { useFeedback } from '../../components/Feedback/FeedbackProvider';
 import { formatMoney } from '../../utils/format';
+import { getImageUrl } from '../../utils/images';
 import type { Product } from '../../api/products/products.types';
-import type { VendaItem } from '../../api/sales/sales.api';
+import type { SaleItem } from '../../api/sales/sales.types';
 import type { ClientList } from '../../api/clients/clients.types';
 import { HistoricoVendas } from './Historico';
 import { ProdutoModal } from './modal/ProdutoModal';
@@ -15,15 +17,15 @@ import './styles.css';
 type Modo = 'nova' | 'historico';
 type FormaPagamento = 'PIX' | 'DINHEIRO' | 'CARTAO';
 
-interface ItemVenda extends VendaItem {
+interface ItemVenda extends SaleItem {
 	itemId: string;
 }
 
 export function Vendas() {
 	const [modo, setModo] = useState<Modo>('nova');
 
-	const [products, setProducts] = useState<Product[]>([]);
-	const [clients, setClients] = useState<ClientList[]>([]);
+	const { data: products = [] } = useQuery(productsQuery());
+	const createSale = useCreateSale();
 
 	const [itensVenda, setItensVenda] = useState<ItemVenda[]>([]);
 	const proximoItemId = useRef(1);
@@ -72,17 +74,6 @@ export function Vendas() {
 		setItensVenda(prev => prev.filter(i => i.itemId !== itemId));
 	}
 
-	useEffect(() => { loadData(); }, []);
-
-	async function loadData() {
-		const [prod, cli] = await Promise.allSettled([
-			getProducts(),
-			clientService.getClients(),
-		]);
-		if (prod.status === 'fulfilled') setProducts(prod.value);
-		if (cli.status === 'fulfilled') setClients(cli.value ?? []);
-	}
-
 	async function handleFinalize() {
 		if (itensVenda.length === 0) return erro('Adicione pelo menos um produto.');
 		if (!isPaid && !selectedClient) return erro('Para lançar como fiado, selecione o cliente.');
@@ -90,7 +81,7 @@ export function Vendas() {
 
 		setIsSaving(true);
 		try {
-			await vendaService.registrarVenda({
+			await createSale.mutateAsync({
 				date: new Date().toISOString().split('T')[0],
 				clientId: selectedClient?.id ?? null,
 				clientName: selectedClient?.name ?? 'Consumidor Final',
@@ -106,7 +97,6 @@ export function Vendas() {
 			setIsPaid(true);
 			setIsDelivered(true);
 			setPaymentMethod('PIX');
-			await loadData();
 			setShowSuccess(true);
 		} catch (err: any) {
 			erro(err?.message || 'Não foi possível finalizar a venda.');
@@ -150,17 +140,26 @@ export function Vendas() {
 											? 'btn-outline-primary bg-primary-subtle border-primary fw-bold'
 											: 'btn-outline-secondary border-dashed'
 									}`}
+									style={{ minHeight: '60px' }}
 									onClick={() => setIsClientModalOpen(true)}
 								>
-									<span>{selectedClient?.name ?? 'Toque para vincular um cliente (opcional)'}</span>
+									<span className="d-flex align-items-center gap-2 text-truncate">
+										<i
+											className={`bi ${selectedClient ? 'bi-person-check-fill text-primary' : 'bi-person-plus text-muted'}`}
+											aria-hidden="true"
+										/>
+										<span className="text-truncate">
+											{selectedClient?.name ?? 'Toque para vincular um cliente (opcional)'}
+										</span>
+									</span>
 									{selectedClient && (
 										<span
-											className="fs-3 px-3"
+											className="btn btn-danger rounded-circle btn-remove ms-2"
 											role="button"
 											aria-label="Remover cliente"
 											onClick={e => { e.stopPropagation(); setSelectedClient(null); }}
 										>
-											&times;
+											<i className="bi bi-x-lg" aria-hidden="true" />
 										</span>
 									)}
 								</button>
@@ -168,7 +167,7 @@ export function Vendas() {
 						</div>
 
 						<div className="card venda-passo shadow-sm">
-							<div className="card-header bg-white fw-semibold">Toque no produto para vender</div>
+							<div className="card-header fw-semibold">Toque no produto para vender</div>
 							<div className="card-body">
 								{products.length === 0 ? (
 									<div className="text-center text-muted py-4">Nenhum produto cadastrado.</div>
@@ -185,7 +184,7 @@ export function Vendas() {
 													>
 														<div className="produto-card-imagem">
 															{product.imageUrl
-																? <img src={product.imageUrl} alt={product.name} />
+																? <img src={getImageUrl(product.imageUrl)!} alt={product.name} />
 																: <span className="produto-card-imagem-placeholder">☕</span>}
 														</div>
 														<div className="card-body d-flex flex-column justify-content-between p-3">
@@ -197,12 +196,12 @@ export function Vendas() {
 																		: `Estoque: ${product.stockQuantity} un`}
 																</div>
 															</div>
-															<div className="d-flex justify-content-between align-items-center">
+															<div className="d-flex flex-wrap justify-content-between align-items-center gap-2">
 																<span className="fs-4 fw-bold text-success">
 																	{formatMoney(product.sellPrice)}
 																</span>
 																{semEstoque && (
-																	<span className="badge bg-warning text-dark p-2">Sem estoque</span>
+																	<span className="badge bg-danger p-2">Sem estoque</span>
 																)}
 															</div>
 														</div>
@@ -219,7 +218,7 @@ export function Vendas() {
 					<div className="col-lg-5 col-xl-4">
 						<div className="sticky-lg-top vendas-sidebar">
 							<div className="card venda-passo shadow-sm">
-								<div className="card-header bg-white fw-semibold d-flex justify-content-between">
+								<div className="card-header fw-semibold d-flex justify-content-between">
 									<span>Itens da venda</span>
 									{unidades > 0 && (
 										<span className="badge bg-primary rounded-pill fs-6">
@@ -250,11 +249,11 @@ export function Vendas() {
 														<span className="fs-5 fw-bold">{formatMoney(item.totalPrice)}</span>
 														<button
 															type="button"
-															className="btn btn-outline-danger rounded-3"
+															className="btn btn-danger rounded-circle btn-remove"
 															aria-label={`Remover ${item.productName}`}
 															onClick={() => removerItem(item.itemId)}
 														>
-															&times;
+															<i className="bi bi-x-lg" aria-hidden="true" />
 														</button>
 													</div>
 												</li>
@@ -340,10 +339,8 @@ export function Vendas() {
 
 			{isClientModalOpen && (
 				<SelecionarClienteModal
-					clients={clients}
 					onClose={() => setIsClientModalOpen(false)}
 					onSelect={client => { setSelectedClient(client); setIsClientModalOpen(false); }}
-					onCreated={loadData}
 				/>
 			)}
 

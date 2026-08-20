@@ -69,6 +69,7 @@ function PainelPagamento({ debts, total, clientId, onPago, onCancel }: { debts: 
 						<input
 							className={`form-control ${excede ? 'is-invalid' : ''}`}
 							inputMode="decimal"
+							autoComplete="off"
 							autoFocus
 							value={valor}
 							onChange={e => setValor(e.target.value)}

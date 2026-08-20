@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { CoffeeMark } from '../../components/CoffeeMark';
 
 export function Login() {
   const [email, setEmail] = useState('');
@@ -36,17 +37,22 @@ export function Login() {
   return (
     <div className="login-container">
       <div className="login-card">
-        <h3 className="login-logo">Controle de Estoque</h3>
+        <h3 className="login-logo d-flex align-items-center justify-content-center gap-2">
+          <CoffeeMark variant="light" size={30} />
+          Controle de Estoque
+        </h3>
         
         <form onSubmit={handleSubmit}>
           {error && <div className="alert alert-danger py-2">{error}</div>}
           
           <div className="mb-3">
             <label htmlFor="emailInput" className="form-label">E-mail</label>
-            <input 
-              type="email" 
-              className="form-control" 
-              id="emailInput" 
+            <input
+              type="email"
+              className="form-control"
+              id="emailInput"
+              name="username"
+              autoComplete="username"
               placeholder="admin@sistema.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -56,10 +62,12 @@ export function Login() {
           
           <div className="mb-4">
             <label htmlFor="passwordInput" className="form-label">Senha</label>
-            <input 
-              type="password" 
-              className="form-control" 
+            <input
+              type="password"
+              className="form-control"
               id="passwordInput"
+              name="password"
+              autoComplete="current-password"
               placeholder="******"
               value={password}
               onChange={(e) => setPassword(e.target.value)}

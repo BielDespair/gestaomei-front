@@ -1,5 +1,6 @@
 import { Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { LoadingState } from '../components/LoadingState';
 
 export function PrivateRoute() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -10,7 +11,7 @@ export function PrivateRoute() {
   // como o <Navigate> já disparou, o usuário fica preso lá mesmo depois da
   // validação terminar e confirmar que ele estava logado.
   if (isLoading) {
-    return <div className="text-center py-5">Carregando...</div>;
+    return <LoadingState />;
   }
 
   return isAuthenticated ? <Outlet /> : <Navigate to="/login" replace />;

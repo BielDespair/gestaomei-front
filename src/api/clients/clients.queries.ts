@@ -8,23 +8,24 @@ import {
     deleteClient,
     registerPayment,
 } from './clients.api'
-import type { ClientInput, RegisterPayment } from './clients.types'
+import type { ClientInput, RegisterPayment, ClientsFilter } from './clients.types'
 
 
 export const clientKeys = {
     all: ['clients'] as const,
     lists: () => [...clientKeys.all, 'list'] as const,
+    list: (filter: ClientsFilter) => [...clientKeys.lists(), filter] as const,
     detail: (id: number) => [...clientKeys.all, 'detail', id] as const,
 }
 
 
 
-export const clientsQuery = () =>
+export const clientsQuery = (filter: ClientsFilter = {}) =>
     queryOptions({
-        queryKey: clientKeys.lists(),
+        queryKey: clientKeys.list(filter),
         queryFn: async () => {
-            const data = await getClients()
-            if (!Array.isArray(data)) throw new Error('Resposta inválida da API')
+            const data = await getClients(filter)
+            if (!data || !Array.isArray(data.items)) throw new Error('Resposta inválida da API')
             return data
         },
     })
@@ -41,8 +42,8 @@ export function useAddClient() {
 
     return useMutation({
         mutationFn: (data: ClientInput) => addClient(data),
-        onSuccess: (created) => {
-            qc.setQueryData(clientKeys.detail(created.id), created)
+        onSuccess: (id) => {
+            qc.invalidateQueries({ queryKey: clientKeys.detail(id) })
             qc.invalidateQueries({ queryKey: clientKeys.lists() })
         },
     })
@@ -52,8 +53,8 @@ export function useUpdateClient() {
     const qc = useQueryClient()
     return useMutation({
         mutationFn: ({ id, data }: { id: number; data: ClientInput }) => updateClient(id, data),
-        onSuccess: (updated, { id }) => {
-            qc.setQueryData(clientKeys.detail(id), updated)
+        onSuccess: (_id, { id }) => {
+            qc.invalidateQueries({ queryKey: clientKeys.detail(id) })
             qc.invalidateQueries({ queryKey: clientKeys.lists() })
         },
     })

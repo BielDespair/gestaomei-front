@@ -2,10 +2,10 @@ import { createContext, useContext, useState, useEffect, type ReactNode } from '
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { meQuery, authKeys, useLogin } from '../api/auth/auth.queries';
 import { getToken, clearToken, setUnauthorizedHandler } from '../api/client';
-import type { User } from '../types/models/User';
+import type { MeResponse } from '../api/auth/auth.types';
 
 interface AuthContextData {
-  user: User | null;
+  user: MeResponse | null;
   isAuthenticated: boolean;
   isLoading: boolean; // true enquanto valida um token salvo ao abrir o app
   signIn: (email: string, pass: string) => Promise<void>;
@@ -26,7 +26,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     enabled: hasToken,
   });
 
-  const user: User | null = me ? { id: me.id, name: me.name, roles: me.roles } : null;
+  const user = me ?? null;
   const isLoading = hasToken && isPending;
 
   function signOut() {

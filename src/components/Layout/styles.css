@@ -1,21 +1,32 @@
 body {
-  background: #f5f7fb;
+  background: var(--fundo);
+}
+
+/* Navbar na variante "sobre escuro" da marca — versão principal do símbolo. */
+.navbar-marca {
+  background: var(--cafe-espresso);
+}
+
+.navbar-marca .navbar-brand {
+  font-family: var(--fonte-display);
+  color: var(--cafe-creme);
 }
 
 /* Bootstrap não tem um "pill" ativo pronto pro navbar-nav — só destaca o link */
 .navbar-nav .nav-link {
-  color: #495057;
+  font-family: var(--fonte-marca);
+  color: var(--cafe-latte);
   transition: background-color 0.15s, color 0.15s;
 }
 
 .navbar-nav .nav-link.active {
-  background-color: #0d6efd;
-  color: #fff !important;
+  background-color: var(--cafe-dourado);
+  color: var(--cafe-espresso) !important;
 }
 
 .navbar-nav .nav-link:hover:not(.active) {
-  background-color: #edf2ff;
-  color: #0d6efd;
+  background-color: rgba(235, 210, 175, 0.15);
+  color: var(--cafe-creme);
 }
 
 /* Limita a largura do conteúdo principal em telas grandes, mesmo usando .container */

@@ -60,3 +60,13 @@ export interface RegisterPayment {
 
 
 export type ClientInput = Omit<Client, 'id' | 'debts'>;
+
+export type ClientSortBy = 'name' | 'document' | 'district';
+
+export interface ClientsFilter {
+  search?: string;
+  page?: number;
+  pageSize?: number;
+  sortBy?: ClientSortBy;
+  sortDirection?: 'asc' | 'desc';
+}

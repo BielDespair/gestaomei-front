@@ -4,6 +4,7 @@ import ClienteModal, { ActiveTab, type ModalMode } from './ClienteModal';
 import type { ClientFormData } from './useClientForm';
 import { clientQuery, useAddClient, useUpdateClient } from '../../../api/clients/clients.queries';
 import { useQuery } from '@tanstack/react-query';
+import { LoadingState } from '../../../components/LoadingState';
 
 interface Props {
 	/** null = novo cliente */
@@ -47,10 +48,7 @@ export function ClienteModalContainer({ clientId, tab, mode, onClose }: Props) {
 				{isError ? (
 					<div className="alert alert-danger mb-0">Não foi possível carregar os dados do cliente.</div>
 				) : (
-					<div className="text-center text-muted py-5">
-						<div className="spinner-border" role="status" aria-hidden="true" />
-						<div className="mt-2">Carregando cliente…</div>
-					</div>
+					<LoadingState label="Carregando cliente…" />
 				)}
 			</ModalShell>
 		);

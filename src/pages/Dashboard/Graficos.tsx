@@ -6,6 +6,7 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { profitSeriesQuery, topProdutosQuery, formasPagamentoQuery, estoquePorProdutoQuery } from '../../api/dashboard/dashboard.queries';
 import type { SeriesPreset } from '../../api/dashboard/dashboard.types';
+import { LoadingState } from '../../components/LoadingState';
 
 const SERIES_PRESETS: { value: SeriesPreset; label: string }[] = [
   { value: '7d', label: '7 dias' },
@@ -62,7 +63,7 @@ export function Graficos() {
       <div className="card shadow-sm mb-4">
         <div className="card-body">
           {isLoadingSeries ? (
-            <div className="text-center text-muted py-5">Carregando...</div>
+            <LoadingState />
           ) : profitSeries.length === 0 ? (
             <div className="text-center text-muted py-5">Sem vendas nesse período.</div>
           ) : (

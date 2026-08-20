@@ -4,6 +4,7 @@ import type { StockEntryItemRequest } from '../../../api/stock/stock.types';
 import type { Product } from '../../../api/products/products.types';
 import { stockEntryQuery, useCreateStockEntry, useUpdateStockEntry } from '../../../api/stock/stock.queries';
 import { ModalShell } from '../../../components/ModalShell';
+import { LoadingState } from '../../../components/LoadingState';
 import { useFeedback } from '../../../components/Feedback/FeedbackProvider';
 import { formatMoney } from '../../../utils/format';
 
@@ -144,10 +145,7 @@ export function StockEntryFormModal({ entryId, mode = 'edit', products, onClose 
 				{isEntryError ? (
 					<div className="alert alert-danger mb-0">Não foi possível carregar a entrada.</div>
 				) : (
-					<div className="text-center text-muted py-5">
-						<div className="spinner-border" role="status" aria-hidden="true" />
-						<div className="mt-2">Carregando entrada…</div>
-					</div>
+					<LoadingState label="Carregando entrada…" />
 				)}
 			</ModalShell>
 		);
@@ -182,6 +180,7 @@ export function StockEntryFormModal({ entryId, mode = 'edit', products, onClose 
 					<input
 						type="date"
 						className="form-control"
+						autoComplete="off"
 						value={purchaseDate}
 						max={today()}
 						readOnly={!isEditing}
@@ -194,6 +193,7 @@ export function StockEntryFormModal({ entryId, mode = 'edit', products, onClose 
 					<input
 						className="form-control"
 						placeholder={isEditing ? 'Nota 8842 — Torrefação Serra Azul' : '—'}
+						autoComplete="off"
 						value={notes}
 						readOnly={!isEditing}
 						onChange={e => setNotes(e.target.value)}
@@ -212,15 +212,15 @@ export function StockEntryFormModal({ entryId, mode = 'edit', products, onClose 
 				)}
 			</div>
 
-			<div className="table-responsive">
-				<table className="table table-sm align-middle mb-2">
+			<div className="table-responsive d-none d-lg-block">
+				<table className="table table-sm align-middle mb-2 entrada-itens-table">
 					<thead>
 						<tr className="text-secondary">
-							<th className="fw-normal small">Produto</th>
-							<th className="fw-normal small" style={{ width: '110px' }}>Qtd</th>
-							<th className="fw-normal small" style={{ width: '140px' }}>Custo unit.</th>
-							<th className="fw-normal small text-end" style={{ width: '130px' }}>Subtotal</th>
-							{isEditing && <th style={{ width: '48px' }} />}
+							<th className="fw-normal small entrada-th-produto">Produto</th>
+							<th className="fw-normal small entrada-th-qtd">Qtd</th>
+							<th className="fw-normal small entrada-th-custo">Custo unit.</th>
+							<th className="fw-normal small text-end entrada-th-subtotal">Subtotal</th>
+							{isEditing && <th className="entrada-th-acao" />}
 						</tr>
 					</thead>
 					<tbody>
@@ -246,6 +246,7 @@ export function StockEntryFormModal({ entryId, mode = 'edit', products, onClose 
 												step="0.001"
 												min="0"
 												inputMode="decimal"
+												autoComplete="off"
 												className="form-control"
 												value={row.quantity}
 												onChange={e => updateRow(row.key, 'quantity', e.target.value)}
@@ -259,6 +260,7 @@ export function StockEntryFormModal({ entryId, mode = 'edit', products, onClose 
 													step="0.01"
 													min="0"
 													inputMode="decimal"
+													autoComplete="off"
 													className="form-control"
 													value={row.unitCost}
 													onChange={e => updateRow(row.key, 'unitCost', e.target.value)}
@@ -271,11 +273,11 @@ export function StockEntryFormModal({ entryId, mode = 'edit', products, onClose 
 										<td>
 											<button
 												type="button"
-												className="btn btn-sm btn-outline-danger"
+												className="btn btn-danger rounded-circle btn-remove btn-sm"
 												aria-label="Remover item"
 												onClick={() => removeRow(row.key)}
 											>
-												&times;
+												<i className="bi bi-x-lg" aria-hidden="true" />
 											</button>
 										</td>
 									</>
@@ -291,6 +293,86 @@ export function StockEntryFormModal({ entryId, mode = 'edit', products, onClose 
 						))}
 					</tbody>
 				</table>
+			</div>
+
+			<div className="d-flex flex-column gap-2 mb-2 d-lg-none">
+				{rows.map(row => (
+					<div className="list-card" key={row.key}>
+						{isEditing ? (
+							<>
+								<div className="mb-2">
+									<label className="form-label small text-muted mb-1">Produto</label>
+									<select
+										className="form-select"
+										value={row.productId}
+										onChange={e => updateRow(row.key, 'productId', e.target.value)}
+									>
+										<option value="">Selecione o produto</option>
+										{products.map(p => (
+											<option key={p.id} value={p.id}>{p.name}</option>
+										))}
+									</select>
+								</div>
+								<div className="row g-2">
+									<div className="col-6">
+										<label className="form-label small text-muted mb-1">Qtd</label>
+										<input
+											type="number"
+											step="0.001"
+											min="0"
+											inputMode="decimal"
+											autoComplete="off"
+											className="form-control"
+											value={row.quantity}
+											onChange={e => updateRow(row.key, 'quantity', e.target.value)}
+										/>
+									</div>
+									<div className="col-6">
+										<label className="form-label small text-muted mb-1">Custo unit.</label>
+										<div className="position-relative">
+											<span className="input-rs-prefix" aria-hidden="true">R$</span>
+											<input
+												type="number"
+												step="0.01"
+												min="0"
+												inputMode="decimal"
+												autoComplete="off"
+												className="form-control input-com-prefixo-rs"
+												value={row.unitCost}
+												onChange={e => updateRow(row.key, 'unitCost', e.target.value)}
+											/>
+										</div>
+									</div>
+								</div>
+								<div className="entrada-item-card-footer">
+									<span className="fw-medium me-auto">
+										{row.productId ? formatMoney(subtotal(row)) : <span className="text-muted fw-normal">—</span>}
+									</span>
+									<button
+										type="button"
+										className="btn btn-danger rounded-circle btn-remove btn-sm"
+										aria-label="Remover item"
+										onClick={() => removeRow(row.key)}
+									>
+										<i className="bi bi-x-lg" aria-hidden="true" />
+									</button>
+								</div>
+							</>
+						) : (
+							<>
+								<div className="list-card-title mb-1">
+									{products.find(p => String(p.id) === row.productId)?.name ?? '—'}
+								</div>
+								<div className="list-card-row">
+									<span className="list-card-label">
+										{row.quantity} un × {formatMoney(parseFloat(row.unitCost) || 0)}
+									</span>
+									<span className="list-card-value fw-medium">{formatMoney(subtotal(row))}</span>
+								</div>
+							</>
+						)}
+					</div>
+				))}
 			</div>
 
 			{isEditing && (
